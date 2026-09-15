@@ -461,7 +461,7 @@ static Config parse(int argc, char** argv) {
   if (config.dna_tax.empty()) {
     throw std::runtime_error("taxonomy requires --dna-tax or MICROSAGS_DNA_TAX");
   }
-  if (config.flye_root.empty()) {
+  if (!config.stop_after_annotation && config.flye_root.empty()) {
     throw std::runtime_error("Flye runtime requires --flye-root, MICROSAGS_FLYE_ROOT, or an active conda/pixi environment");
   }
   return config;
@@ -688,7 +688,9 @@ int main(int argc, char** argv) try {
   std::error_code packed_error;
   config.dna_packed_db = fs::weakly_canonical(config.dna_packed_db, packed_error);
   if (packed_error) throw std::runtime_error("cannot canonicalize packed dna2bit database");
-  config.subass = resolve_program(config.subass, argv[0], "C++ subassemble");
+  if (!config.stop_after_annotation) {
+    config.subass = resolve_program(config.subass, argv[0], "C++ subassemble");
+  }
   auto sags = read_manifest(config.manifest);
   fs::create_directories(config.out);
 
