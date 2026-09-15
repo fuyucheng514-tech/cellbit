@@ -1,0 +1,12 @@
+{
+  "schema": "cellbit-stage3b-aborted-run-v1",
+  "status": "ABORTED",
+  "attempt": "04_stage3b_exact_baseline_attempt_001",
+  "unit": "cellbit-lake-stage3b-exact-baseline-v1-20260904.service",
+  "stopped_at": "2026-09-04T22:07:32+08:00",
+  "reason": "User corrected the scientific specification: Stage3B eligibility is Cellbit/Dna2bit-negative plus the existing quality gates, not Cellbit/Dna2bit-negative plus GTDB-reference-negative.",
+  "last_running_stage": "experimental_gtdb_ani_af_search",
+  "valid_final_result": false,
+  "complete_json_created": false,
+  "preservation_policy": "Keep this partial write-once directory as provenance evidence; never resume or report it as a scientific result."
+}

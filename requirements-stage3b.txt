@@ -1,0 +1,5 @@
+# Runtime proven to reproduce the frozen Lake signed-Leiden partitions.
+# Do not substitute the newer igraph/leidenalg pair: that environment was
+# tested and rejected because it changed the clustering result.
+igraph==0.11.9
+leidenalg==0.10.2

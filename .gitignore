@@ -1,0 +1,23 @@
+# Local build and runtime outputs
+build/
+install/
+*.o
+*.a
+*.so
+
+# Local configuration and credentials
+config/paths.env
+*.pem
+*.key
+
+# Large scientific inputs/results
+data/
+results/
+output/
+*.fastq
+*.fastq.gz
+*.fasta
+*.fa
+*.fq
+*.fq.gz
+*.dmnd

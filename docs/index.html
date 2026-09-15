@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Microsags DNA2bit-SAG Tractor documentation." />
+  <title>Microsags · DNA2bit-SAG Tractor</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="rt-header">
+    <div class="rt-header-inner">
+      <a class="brand" href="#home" aria-label="Microsags documentation home">
+        <span class="brand-mark">μS</span>
+        <span class="brand-copy"><strong>Microsags</strong><small>DNA2bit-SAG Tractor</small></span>
+      </a>
+      <div class="search-wrap">
+        <label class="search-box" for="searchInput">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Search this documentation" autocomplete="off" />
+          <kbd>/</kbd>
+        </label>
+        <div id="searchResults" class="search-results" hidden></div>
+      </div>
+      <a class="header-link" href="https://github.com/fuyucheng514-tech/Microsags" target="_blank" rel="noreferrer">GitHub</a>
+      <button id="menuToggle" class="menu-toggle" type="button" aria-label="Open documentation navigation" aria-expanded="false">☰</button>
+    </div>
+  </header>
+
+  <div class="docs-shell">
+    <aside id="sidebar" class="sidebar" aria-label="Documentation navigation">
+      <div class="sidebar-heading"><span>Microsags</span><small>DNA2bit-SAG Tractor</small></div>
+      <nav class="side-nav">
+        <div class="nav-label">Contents</div>
+        <a class="nav-link active" href="#home" data-page="home">Introduction</a>
+        <a class="nav-link" href="#install" data-page="install">Install</a>
+        <a class="nav-link" href="#usage" data-page="usage">Usage examples</a>
+        <a class="nav-link" href="#input" data-page="input">Input preparation</a>
+        <a class="nav-link" href="#workflow" data-page="workflow">Workflow modes</a>
+        <div class="nav-label spaced">Workflow details</div>
+        <a class="nav-link" href="#stage3a" data-page="stage3a">Stage3A</a>
+        <a class="nav-link" href="#stage3b" data-page="stage3b">Stage3B</a>
+        <a class="nav-link" href="#advanced" data-page="advanced">Advanced workflows</a>
+        <div class="nav-label spaced">Reference</div>
+        <a class="nav-link" href="#output" data-page="output">Output and reproducibility</a>
+        <a class="nav-link" href="#api" data-page="api">API reference</a>
+        <a class="nav-link" href="#faq" data-page="faq">FAQ</a>
+      </nav>
+      <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span>Documentation build<br /><small>Scientific runs are not started by this site.</small></div>
+    </aside>
+
+    <main id="main" class="doc-main" tabindex="-1">
+      <div class="breadcrumbs"><a href="#home">Microsags</a><span>/</span><span id="breadcrumbCurrent">Introduction</span></div>
+      <div id="searchEmpty" class="search-empty" hidden>No matching documentation page.</div>
+
+      <article class="doc-page active" data-page="home" data-title="Introduction">
+        <h1>Microsags</h1>
+        <p class="lead">DNA2bit-SAG Tractor documentation</p>
+        <p>Microsags documents the original integrated DNA2bit-SAG Tractor software: its installation boundary, input contract, workflow modes, output evidence, and reproducibility rules.</p>
+        <div class="callout citation"><strong>Citation</strong><p>This project currently has no substitute for its versioned source, release archive, and run evidence. The navigation and page organization follow the public <a href="https://semibin.readthedocs.io/en/latest/" target="_blank" rel="noreferrer">SemiBin documentation</a> pattern; Microsags does not use the SemiBin model or algorithm.</p></div>
+        <h2 id="home-overview">Overview</h2>
+        <p>The software accepts a contigs manifest or a paired-reads manifest. A contigs entry can enter the DNA2bit path directly; a reads entry requires the documented read-processing and assembly stage before downstream processing.</p>
+        <h2 id="home-install">Install</h2>
+        <pre><code>conda env create -f environment.yml
+conda activate dna2bit-sag-original
+JOBS=8 PREFIX="$HOME/.local/dna2bit-sag-tractor" bash install.sh</code></pre>
+        <h2 id="home-next">Next steps</h2>
+        <p>Start with <a href="#install">Install</a>, then follow <a href="#usage">Usage examples</a>. Sections whose production contract has not yet been published are intentionally left as placeholders.</p>
+      </article>
+
+      <article class="doc-page" data-page="install" data-title="Install">
+        <h1>Install</h1>
+        <p class="lead">Install the source release in an isolated environment.</p>
+        <h2 id="install-conda">Conda environment</h2>
+        <pre><code>conda env create -f environment.yml
+conda activate dna2bit-sag-original
+JOBS=8 PREFIX="$HOME/.local/dna2bit-sag-tractor" bash install.sh
+export PATH="$HOME/.local/dna2bit-sag-tractor/bin:$PATH"</code></pre>
+        <h2 id="install-source">Build from source</h2>
+        <pre><code>cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j8
+./build/dna2bit-sag-pipeline --help</code></pre>
+        <h2 id="install-external">External artifacts</h2>
+        <p>Large databases are not included in the GitHub release. Copy the template below and fill in absolute paths on the target machine.</p>
+        <pre><code>cp config/paths.env.example config/paths.env
+# edit DNA2BIT_BINARY and DNA2BIT_GTDB232</code></pre>
+        <table><thead><tr><th>Artifact</th><th>Where it is recorded</th></tr></thead><tbody>
+          <tr><td>Source and binaries</td><td>Release archive and SHA256SUMS.txt</td></tr>
+          <tr><td>Database paths</td><td>config/paths.env</td></tr>
+          <tr><td>Other external components</td><td>EXTERNAL_COMPONENTS.tsv</td></tr>
+        </tbody></table>
+      </article>
+
+      <article class="doc-page" data-page="usage" data-title="Usage examples">
+        <h1>Usage examples</h1>
+        <p class="lead">The examples page follows the short-command style used by SemiBin. Only the confirmed entry points are shown here.</p>
+        <h2 id="usage-help">Check the installed command</h2>
+        <pre><code>dna2bit-sag-pipeline --help</code></pre>
+        <h2 id="usage-contigs">Contigs input</h2>
+        <p>Provide a two-column tab-separated manifest with <code>sag_id</code> and <code>contigs</code>. The exact production runner and output contract are documented in the release-specific files.</p>
+        <pre><code>sag_id&lt;TAB&gt;contigs
+SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001.fa</code></pre>
+        <h2 id="usage-reads">Paired reads input</h2>
+        <p>Provide a three-column manifest with exact headers <code>sag_id</code>, <code>r1</code>, and <code>r2</code>.</p>
+        <pre><code>sag_id&lt;TAB&gt;r1&lt;TAB&gt;r2
+SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001_R1.fastq.gz&lt;TAB&gt;/absolute/path/SAG_0001_R2.fastq.gz</code></pre>
+        <div class="placeholder" aria-label="Usage command pending"><span> </span></div>
+      </article>
+
+      <article class="doc-page" data-page="input" data-title="Input preparation">
+        <h1>Input preparation</h1>
+        <p class="lead">Prepare a deterministic manifest before a run.</p>
+        <h2 id="input-contigs">Contigs manifest</h2>
+        <pre><code>sag_id&lt;TAB&gt;contigs
+SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001.fa</code></pre>
+        <h2 id="input-reads">Paired reads manifest</h2>
+        <pre><code>sag_id&lt;TAB&gt;r1&lt;TAB&gt;r2
+SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001_R1.fastq.gz&lt;TAB&gt;/absolute/path/SAG_0001_R2.fastq.gz</code></pre>
+        <h2 id="input-checks">Checks</h2>
+        <ul><li>SAG IDs are unique.</li><li>All referenced files exist, are non-empty, and are not reused by another row.</li><li>Paths are absolute or are resolved according to the documented manifest rule.</li><li>The manifest and its generator are retained with the run evidence.</li></ul>
+        <div class="callout warning"><strong>Length gate</strong><p>SAG total length below 1000 bp is excluded; exactly 1000 bp is retained.</p></div>
+      </article>
+
+      <article class="doc-page" data-page="workflow" data-title="Workflow modes">
+        <h1>Workflow modes</h1>
+        <p class="lead">Two input modes are documented separately, as in the reference documentation.</p>
+        <h2 id="workflow-contigs">Contigs route</h2>
+        <pre><code>contigs manifest
+  → length gate
+  → DNA2bit classification
+  → downstream workflow</code></pre>
+        <h2 id="workflow-reads">Reads route</h2>
+        <pre><code>paired reads manifest
+  → read processing and assembly
+  → contigs
+  → DNA2bit classification
+  → downstream workflow</code></pre>
+        <h2 id="workflow-boundary">Boundary</h2>
+        <p>These routes have different computational scope. A reads run includes the upstream read-processing and assembly cost; a contigs run does not.</p>
+      </article>
+
+      <article class="doc-page" data-page="stage3a" data-title="Stage3A">
+        <h1>Stage3A</h1>
+        <p class="lead">Stage3A groups SAGs that carry an accepted DNA2bit species label.</p>
+        <h2 id="stage3a-flow">Documented role</h2>
+        <p>Accepted species labels are aggregated into species-level groups and handed to the deterministic assembly/subassembly path described by the release.</p>
+        <h2 id="stage3a-rules">Frozen rules</h2>
+        <p>Detailed member-selection, support thresholds, and quality gates are not reproduced here until they are attached to a versioned release specification.</p>
+        <div class="placeholder" aria-label="Stage3A detailed specification pending"><span> </span></div>
+      </article>
+
+      <article class="doc-page" data-page="stage3b" data-title="Stage3B">
+        <h1>Stage3B</h1>
+        <p class="lead">Stage3B is the downstream branch for SAGs that are rejected or have no accepted DNA2bit label.</p>
+        <h2 id="stage3b-status">Documentation status</h2>
+        <p>The detailed production contract for graph construction, edge definitions, clustering, and group assembly is intentionally left blank in this public guide until a release-specific specification is frozen.</p>
+        <div class="placeholder" aria-label="Stage3B specification pending"><span> </span></div>
+      </article>
+
+      <article class="doc-page" data-page="advanced" data-title="Advanced workflows">
+        <h1>Advanced workflows</h1>
+        <p class="lead">This page is reserved for independently runnable feature generation, stage replay, cluster diagnostics, and performance procedures.</p>
+        <div class="placeholder" aria-label="Advanced workflow documentation pending"><span> </span></div>
+      </article>
+
+      <article class="doc-page" data-page="output" data-title="Output and reproducibility">
+        <h1>Output and reproducibility</h1>
+        <p class="lead">A result is reproducible only when its code, environment, input, database, parameters, and evidence are retained together.</p>
+        <h2 id="output-tree">Attempt layout</h2>
+        <pre><code>attempt_001/
+├── 00_control/
+├── 01_input/
+├── 02_dna2bit/
+├── 03_stage3a/
+├── 04_stage3b/
+├── 05_assembly/
+├── 06_final_view/
+└── receipts/</code></pre>
+        <h2 id="output-evidence">Evidence</h2>
+        <ul><li>Keep the manifest, runner, launcher, database and binaries with SHA256 records.</li><li>Keep logs, phase receipts, final result metadata and failed attempts.</li><li>Use a new write-once attempt for a rerun; do not overwrite a previous result.</li></ul>
+        <div class="placeholder" aria-label="Quality report specification pending"><span> </span></div>
+      </article>
+
+      <article class="doc-page" data-page="api" data-title="API reference">
+        <h1>API reference</h1>
+        <p class="lead">The command-line and file-level API will be documented here when the public interface is frozen.</p>
+        <div class="placeholder" aria-label="API reference pending"><span> </span></div>
+      </article>
+
+      <article class="doc-page" data-page="faq" data-title="FAQ">
+        <h1>FAQ</h1>
+        <h2 id="faq-model">Does Microsags use the SemiBin model?</h2>
+        <p>No. SemiBin is used as a documentation-structure reference only.</p>
+        <h2 id="faq-database">Are the databases included?</h2>
+        <p>No. Large external databases are configured separately and are not placed in the GitHub release archive.</p>
+        <h2 id="faq-results">Does this page replace a run receipt?</h2>
+        <p>No. The release, manifest, logs, receipts, and final result metadata are the authoritative evidence for a scientific run.</p>
+        <h2 id="faq-empty">More questions</h2>
+        <div class="placeholder" aria-label="FAQ entries pending"><span> </span></div>
+      </article>
+
+      <div class="page-nav" aria-label="Page navigation">
+        <a id="prevPage" class="page-nav-link prev" href="#home"><span>Home</span><strong>Introduction</strong></a>
+        <a id="nextPage" class="page-nav-link next" href="#install"><span>Next →</span><strong>Install</strong></a>
+      </div>
+    </main>
+
+    <aside class="right-rail" aria-label="On this page">
+      <div class="right-title">On this page</div>
+      <nav id="tocList"></nav>
+    </aside>
+  </div>
+
+  <footer class="site-footer"><span>Microsags · DNA2bit-SAG Tractor</span><span>Documentation layout inspired by <a href="https://semibin.readthedocs.io/en/latest/" target="_blank" rel="noreferrer">SemiBin</a></span></footer>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "schema": "stage3b-reproduction-termination-note-v1",
+  "status": "TERMINATED_NOT_A_SCIENTIFIC_PASS",
+  "run_root": "/home/data/fyc/the_oftware_oiiaioiiiai/c++subass/06_stage3b_lake_reproduction_20260904/historical_frozen_evidence_v1",
+  "unit": "dna2bit-stage3b-historical-frozen-v1.service",
+  "terminated_at": "2026-09-04T15:41:32+08:00",
+  "reason": "The reproduction environment did not match the historical Leiden environment.",
+  "historical_environment": {
+    "python": "3.12.9",
+    "networkx": "3.6.1",
+    "igraph": "0.11.9",
+    "leidenalg": "0.10.2"
+  },
+  "v1_environment": {
+    "python": "3.12.3",
+    "networkx": "3.2.1",
+    "igraph": "1.0.0",
+    "leidenalg": "0.12.0"
+  },
+  "observed_mismatch": {
+    "positive_membership_rows_v1": 3971,
+    "positive_membership_rows_authority": 3963,
+    "first_signed_clusters_ge10_v1": 37,
+    "first_signed_clusters_ge10_authority": 34,
+    "first_signed_negative_violations_v1": 6706,
+    "first_signed_negative_violations_authority": 6707
+  },
+  "evidence_policy": "The partial v1 output is retained unchanged and must never be resumed or described as PASS."
+}

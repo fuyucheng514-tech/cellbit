@@ -1,0 +1,4 @@
+# sag_id<TAB>R1.fastq.gz<TAB>R2.fastq.gz
+SAG_001	/data/SAG_001_R1.fastq.gz	/data/SAG_001_R2.fastq.gz
+SAG_002	/data/SAG_002_R1.fastq.gz	/data/SAG_002_R2.fastq.gz
+
