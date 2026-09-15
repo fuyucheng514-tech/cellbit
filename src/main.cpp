@@ -30,6 +30,16 @@ namespace fs = std::filesystem;
 enum class InputKind { paired_reads, contigs };
 enum class SequenceFormat { fasta, fastq };
 
+static fs::path environment_path(const char* name) {
+  const char* value = std::getenv(name);
+  return value && *value ? fs::path(value) : fs::path();
+}
+
+static fs::path default_flye_root() {
+  fs::path configured = environment_path("MICROSAGS_FLYE_ROOT");
+  return configured.empty() ? environment_path("CONDA_PREFIX") : configured;
+}
+
 struct Sag {
   std::string id;
   InputKind input_kind = InputKind::paired_reads;
@@ -46,12 +56,12 @@ struct Sag {
 struct Config {
   fs::path manifest, out;
   fs::path fastp = "fastp";
-  fs::path spades = "/home/data/fyc/biosoftware/bin/spades.py";
-  fs::path dna_tax = "/home/data/shared/software/Dna2bit/GTDB232/genome_taxonomy_1.csv";
+  fs::path spades = "spades.py";
+  fs::path dna_tax = environment_path("MICROSAGS_DNA_TAX");
   std::string dna_search_engine = "packed";
-  fs::path dna_packed_db;
+  fs::path dna_packed_db = environment_path("MICROSAGS_DNA_PACKED_DB");
   fs::path subass = "cpp-subass";
-  fs::path flye_root = "/home/data/fyc/biosoft/miniconda3/envs/assemble";
+  fs::path flye_root = default_flye_root();
   int threads = 24;
   int memory_gb = 128;
   bool dry = false;
@@ -420,7 +430,11 @@ static Config parse(int argc, char** argv) {
                 << "  SAG_ID<TAB>contigs.fasta   FASTA; skip fastp/SPAdes -> >=1000-bp gate\n"
                 << "A matching optional header (sag_id/r1/r2 or sag_id/assembly_fasta) is accepted.\n\n"
                 << "Search engine is embedded teacher-compatible packed search:\n"
-                << "  --dna-search-engine packed --dna-packed-db INDEX_DIR\n";
+                << "  --dna-search-engine packed --dna-packed-db INDEX_DIR\n\n"
+                << "Portable dependency paths:\n"
+                << "  --fastp PATH --spades PATH --subass PATH --flye-root PREFIX\n"
+                << "  MICROSAGS_DNA_TAX, MICROSAGS_DNA_PACKED_DB and MICROSAGS_FLYE_ROOT\n"
+                << "  may be used instead of repeating data/runtime paths.\n";
       std::exit(0);
     } else {
       throw std::runtime_error("unknown option: " + option);
@@ -432,7 +446,13 @@ static Config parse(int argc, char** argv) {
     throw std::runtime_error("embedded package supports only --dna-search-engine packed");
   }
   if (config.dna_search_engine == "packed" && config.dna_packed_db.empty()) {
-    throw std::runtime_error("--dna-search-engine packed requires --dna-packed-db");
+    throw std::runtime_error("packed search requires --dna-packed-db or MICROSAGS_DNA_PACKED_DB");
+  }
+  if (config.dna_tax.empty()) {
+    throw std::runtime_error("taxonomy requires --dna-tax or MICROSAGS_DNA_TAX");
+  }
+  if (config.flye_root.empty()) {
+    throw std::runtime_error("Flye runtime requires --flye-root, MICROSAGS_FLYE_ROOT, or an active conda/pixi environment");
   }
   return config;
 }

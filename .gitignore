@@ -1,6 +1,7 @@
 # Local build and runtime outputs
 build/
 install/
+.pixi/
 *.o
 *.a
 *.so

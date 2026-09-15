@@ -128,3 +128,9 @@ install(TARGETS dna2bit-sag-pipeline dna2bit-embedded-sketch sag-stage3b-tractor
 if(TARGET cpp-subass)
   install(TARGETS cpp-subass RUNTIME DESTINATION bin)
 endif()
+install(PROGRAMS tools/microsags DESTINATION bin)
+install(PROGRAMS python/stage3b_signed_leiden.py DESTINATION libexec/microsags)
+install(FILES config/paths.env.example requirements-stage3b.txt
+        DESTINATION share/microsags)
+install(FILES README.md INSTALL.md README_STAGE3B.md README_GTD_ANI_AF.md
+        DESTINATION share/doc/microsags)

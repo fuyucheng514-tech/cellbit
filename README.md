@@ -1,4 +1,4 @@
-# Microsags v0.1（DNA2bit-SAG Tractor original）
+# Microsags v0.1 (DNA2bit-SAG Tractor original)
 
 把以下流程统一封装成一个 C++17 命令行程序：
 
@@ -8,35 +8,30 @@
    - 单端 FASTQ、R1/R2 混合格式、损坏或截断文件均 fail-closed；
 2. reads 路径执行 `SPAdes --sc --careful`；contigs 路径保持原序列不变（未压缩文件建立链接，gzip 输入仅解压为稳定 FASTA 视图）；
 3. 两条路径统一统计每个SAG组装序列总长度；`<1000 bp` 硬排除，`>=1000 bp` 才继续；
-4. 使用老师原版 `/home/data/shared/software/Dna2bit/dna2bit`，读取该SAG质控后的配对FASTQ给每个合格SAG分类；
+4. 使用仓库内嵌、与老师原版参数和输出语义兼容的 DNA2bit C++ 实现，对每个合格 SAG 执行 k=17 sketch 和 packed search；
 5. 有标签的 SAG 按 species 标签聚合，进入已有 C++ `cpp-subass-full`；
 6. 无标签 SAG 写入 `03B_unclassified_pending.tsv`；独立二进制
    `sag-stage3b-tractor` 可继续执行严格的无标签 SAG 聚合流程（见
    [README_STAGE3B.md](README_STAGE3B.md)）。主程序与 3B 可分别部署，避免改变
    已冻结的 1–3A 行为。
 
-这里“C++封装”是指主调度、清单检查、分组、FASTA合并、收据和3B接口均为C++；fastp、SPAdes、老师的dna2bit及Flye科学内核仍作为固定依赖调用，不冒充重新实现这些成熟算法。
+这里“C++封装”是指主调度、清单检查、分组、FASTA合并、DNA2bit sketch/search、收据和3B接口均为C++；fastp、SPAdes和Flye科学内核仍作为固定依赖调用，不冒充重新实现这些成熟算法。
 
 ## 冻结的 dna2bit 规则
 
-- 原程序：`/home/data/shared/software/Dna2bit/dna2bit`
-- GTDB R232 bit库：`/home/data/shared/software/Dna2bit/GTDB232/GTDB`
-- 与该bit库一一对应的taxonomy：`/home/data/shared/software/Dna2bit/GTDB232/genome_taxonomy_1.csv`
-  （199,923行；服务器现存文件SHA-256：`b10a9a80d42455f7fdc419afcbf231fb06119ee5de4346d5cb5bf8ba9749b78b`）
+- 方法来源是老师原版 DNA2bit；本发布包直接编译仓库内的兼容 C++ sketch 与 packed-search 源码，不要求用户另装老师的二进制。
+- 参考数据为 GTDB R232 对应的 packed bit index 及一一对应的 taxonomy；大型索引不进入 GitHub，运行时显式传入并由收据绑定。
 - `k=17`
 - `bit_len=55296`（必须与现有参考bit一致）
 - `hash_type=0`（wyhash）
-- reads 路径：严格沿用老师历史流程，对质控后 R1/R2 执行 `sketch -p`
-- contigs 路径：老师原版 `sketch` 直接读取 FASTA，不加 `-p`；其余参数完全相同
+- reads 路径：严格沿用老师历史配对输入语义，对质控后 R1/R2 联合 sketch。
+- contigs 路径：直接读取 FASTA；其余 sketch 参数完全相同。
 - `min_ratio=0.01`（老师原版search接受门）
 - 不使用Cellbit57、ALC、Top16、GC硬门或训练模型。
-- 对老师二进制的目录参数强制保留末尾 `/`；原程序内部直接拼接文件名，缺少它会段错误或找错路径。
-- 老师二进制还存在长路径段错误：封装器在每个工作目录建立不改数据的短名符号链接，并从该目录用相对短路径调用；输出再由 manifest/收据绑定回原 SAG。该兼容层不改变任何序列或 sketch 参数。
 - SAG长度硬门：全部contig碱基总和 `<1000 bp` 排除，恰好1000 bp保留。
 
-参考库小文件加载的严格兼容优化候选见
-[docs/DNA2BIT_PACKED_SEARCH.md](docs/DNA2BIT_PACKED_SEARCH.md)。主流程默认仍为
-`--dna-search-engine teacher`，不会改变旧行为；只有完成全量逐字节验收后，才可显式使用
+packed search 的格式与兼容性说明见
+[docs/DNA2BIT_PACKED_SEARCH.md](docs/DNA2BIT_PACKED_SEARCH.md)。本发布包只接受
 `--dna-search-engine packed --dna-packed-db INDEX_DIR`。生产 packed index 在构建时把正确
 taxonomy的完整 accession 集合与SHA绑定进去，搜索时错配旧taxonomy会立即失败，而不会
 静默产生大量空标签。
@@ -59,12 +54,27 @@ SAG_ID<TAB>/absolute/assembly.fasta[.gz]
 
 检测依据是解压后的 FASTA/FASTQ 结构，不是 `.fa`、`.fq`、`.gz` 等文件名。相对路径按 manifest 所在目录解析。
 
-## 编译和运行
+## 安装（推荐 pixi）
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j
-./build/dna2bit-sag-pipeline --manifest SAGs.tsv --out output --threads 48 --memory-gb 256
+git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
+cd Microsags
+pixi install
+pixi run install
+pixi run microsags --help
+```
+
+pixi 会从 conda-forge 和 Bioconda 建立隔离环境，并安装编译器、HTSlib、fastp、
+SPAdes、Flye、BLAST+、python-igraph 和 leidenalg。完整的 pixi、conda 与源码安装说明见
+[INSTALL.md](INSTALL.md)。大型科学数据库不包含在源码仓库中。
+
+## 运行
+
+```bash
+pixi run microsags --manifest SAGs.tsv --out output \
+  --dna-tax /path/to/genome_taxonomy_1.csv \
+  --dna-packed-db /path/to/packed-index \
+  --threads 48 --memory-gb 256
 ```
 
 可先加 `--dry-run` 查看命令；意外中断后加 `--resume`，只复用带PASS收据的阶段。
@@ -76,7 +86,7 @@ cmake --build build -j
 - `01_assembly/excluded_lt1000bp.tsv`：未达到1000 bp、不会进入后续步骤的SAG
 - `STAGE3B_FASTA_STATS.tsv`：在长度门同一次FASTA扫描中取得的 total/max-contig/GC，
   供新跑的CheckM2结果按 `sag_id` 合并；不伪造 contamination，也不复用历史值
-- `02_dna2bit/bits/`：每个SAG的老师原版bit
+- `02_dna2bit/bits/`：每个 SAG 的内嵌 DNA2bit 兼容 bit
 - `02_dna2bit/labels.tsv`：被原版门接受的标签
 - `03A_subassemble/<species>/run/assembly.fasta`：有标签路径最终bin
 - 3A 显式使用 `cpp-subass --no-overlap-policy passthrough`。它只在

@@ -23,7 +23,7 @@
         </label>
         <div id="searchResults" class="search-results" hidden></div>
       </div>
-      <a class="header-link" href="https://github.com/fuyucheng514-tech/Microsags" target="_blank" rel="noreferrer">GitHub</a>
+      <a class="header-link" href="https://github.com/fuyucheng514-tech/cellbit" target="_blank" rel="noreferrer">GitHub</a>
       <button id="menuToggle" class="menu-toggle" type="button" aria-label="Open documentation navigation" aria-expanded="false">☰</button>
     </div>
   </header>
@@ -62,29 +62,44 @@
         <h2 id="home-overview">Overview</h2>
         <p>The software accepts a contigs manifest or a paired-reads manifest. A contigs entry can enter the DNA2bit path directly; a reads entry requires the documented read-processing and assembly stage before downstream processing.</p>
         <h2 id="home-install">Install</h2>
-        <pre><code>conda env create -f environment.yml
-conda activate dna2bit-sag-original
-JOBS=8 PREFIX="$HOME/.local/dna2bit-sag-tractor" bash install.sh</code></pre>
+        <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
+cd Microsags
+pixi install
+pixi run install
+pixi run microsags --help</code></pre>
         <h2 id="home-next">Next steps</h2>
         <p>Start with <a href="#install">Install</a>, then follow <a href="#usage">Usage examples</a>. Sections whose production contract has not yet been published are intentionally left as placeholders.</p>
       </article>
 
       <article class="doc-page" data-page="install" data-title="Install">
         <h1>Install</h1>
-        <p class="lead">Install the source release in an isolated environment.</p>
-        <h2 id="install-conda">Conda environment</h2>
-        <pre><code>conda env create -f environment.yml
-conda activate dna2bit-sag-original
-JOBS=8 PREFIX="$HOME/.local/dna2bit-sag-tractor" bash install.sh
-export PATH="$HOME/.local/dna2bit-sag-tractor/bin:$PATH"</code></pre>
+        <p class="lead">Microsags currently supports Linux x86-64. Pixi is the recommended installer and resolves packages from conda-forge and Bioconda.</p>
+        <h2 id="install-pixi">Install with pixi (recommended)</h2>
+        <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
+cd Microsags
+pixi install
+pixi run install
+pixi run microsags --help</code></pre>
+        <p>This installs an isolated compiler and runtime environment, builds the C++17 sources, and exposes the <code>microsags</code> command through <code>pixi run</code>.</p>
+        <h2 id="install-conda">Install with conda</h2>
+        <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
+cd Microsags
+conda env create -f environment.yml
+conda activate microsags
+PREFIX="$CONDA_PREFIX" JOBS=8 bash install.sh
+microsags --help</code></pre>
         <h2 id="install-source">Build from source</h2>
-        <pre><code>cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
+cd Microsags
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j8
-./build/dna2bit-sag-pipeline --help</code></pre>
+cmake --install build --prefix "$HOME/.local"
+microsags --help</code></pre>
         <h2 id="install-external">External artifacts</h2>
         <p>Large databases are not included in the GitHub release. Copy the template below and fill in absolute paths on the target machine.</p>
         <pre><code>cp config/paths.env.example config/paths.env
-# edit DNA2BIT_BINARY and DNA2BIT_GTDB232</code></pre>
+# edit MICROSAGS_DNA_TAX and MICROSAGS_DNA_PACKED_DB</code></pre>
+        <p>Microsags is not yet published in Bioconda, so <code>pixi global install microsags</code> and <code>conda install -c bioconda microsags</code> are intentionally not advertised yet.</p>
         <table><thead><tr><th>Artifact</th><th>Where it is recorded</th></tr></thead><tbody>
           <tr><td>Source and binaries</td><td>Release archive and SHA256SUMS.txt</td></tr>
           <tr><td>Database paths</td><td>config/paths.env</td></tr>
@@ -96,7 +111,7 @@ cmake --build build -j8
         <h1>Usage examples</h1>
         <p class="lead">The examples page follows the short-command style used by SemiBin. Only the confirmed entry points are shown here.</p>
         <h2 id="usage-help">Check the installed command</h2>
-        <pre><code>dna2bit-sag-pipeline --help</code></pre>
+        <pre><code>pixi run microsags --help</code></pre>
         <h2 id="usage-contigs">Contigs input</h2>
         <p>Provide a two-column tab-separated manifest with <code>sag_id</code> and <code>contigs</code>. The exact production runner and output contract are documented in the release-specific files.</p>
         <pre><code>sag_id&lt;TAB&gt;contigs
