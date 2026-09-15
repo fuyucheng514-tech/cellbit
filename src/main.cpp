@@ -66,6 +66,7 @@ struct Config {
   int memory_gb = 128;
   bool dry = false;
   bool resume = false;
+  bool stop_after_annotation = false;
 };
 
 class SequenceLineReader {
@@ -423,6 +424,13 @@ static Config parse(int argc, char** argv) {
     else if (option == "--flye-root") config.flye_root = value();
     else if (option == "--dry-run") config.dry = true;
     else if (option == "--resume") config.resume = true;
+    else if (option == "--stop-after") {
+      const auto stage = value();
+      if (stage != "annotation") {
+        throw std::runtime_error("--stop-after currently accepts only: annotation");
+      }
+      config.stop_after_annotation = true;
+    }
     else if (option == "--help" || option == "-h") {
       std::cout << "dna2bit-sag-pipeline --manifest SAGs.tsv --out DIR [options]\n\n"
                 << "Input is detected from file contents, not filename extensions:\n"
@@ -431,6 +439,8 @@ static Config parse(int argc, char** argv) {
                 << "A matching optional header (sag_id/r1/r2 or sag_id/assembly_fasta) is accepted.\n\n"
                 << "Search engine is embedded teacher-compatible packed search:\n"
                 << "  --dna-search-engine packed --dna-packed-db INDEX_DIR\n\n"
+                << "Workflow endpoint:\n"
+                << "  --stop-after annotation   write DNA2bit labels/pending files and skip Stage 3A\n\n"
                 << "Portable dependency paths:\n"
                 << "  --fastp PATH --spades PATH --subass PATH --flye-root PREFIX\n"
                 << "  MICROSAGS_DNA_TAX, MICROSAGS_DNA_PACKED_DB and MICROSAGS_FLYE_ROOT\n"
@@ -925,7 +935,46 @@ int main(int argc, char** argv) try {
     }
   }
 
+  labels.close();
+  pending.close();
+
   const double search_seconds = elapsed_seconds(search_started, SteadyClock::now());
+  if (config.stop_after_annotation) {
+    const auto scientific_finished = SteadyClock::now();
+    const double total_seconds = elapsed_seconds(total_started, scientific_finished);
+    {
+      std::ofstream timing(config.out / "TIMING.tsv");
+      timing << "phase\tseconds\n" << std::fixed << std::setprecision(6)
+             << "preflight_length_gate\t" << preflight_length_seconds << '\n'
+             << "sketch\t" << sketch_seconds << '\n'
+             << "search\t" << search_seconds << '\n'
+             << "total\t" << total_seconds << '\n';
+    }
+    {
+      std::ofstream timing(config.out / "TIMING.json");
+      timing << std::fixed << std::setprecision(6)
+             << "{\"clock\":\"std::chrono::steady_clock\","
+             << "\"workflow_endpoint\":\"annotation\","
+             << "\"dna_search_engine\":\"" << config.dna_search_engine << "\","
+             << "\"length_scan_workers\":" << length_scan_workers << ','
+             << "\"preflight_length_gate_seconds\":" << preflight_length_seconds << ','
+             << "\"sketch_seconds\":" << sketch_seconds << ','
+             << "\"search_seconds\":" << search_seconds << ','
+             << "\"total_seconds\":" << total_seconds << "}\n";
+    }
+    std::ofstream(config.out / "COMPLETE.json")
+        << "{\"status\":\"PASS\",\"pipeline\":\"dna2bit-original-embedded-annotation-v1-auto-input\","
+        << "\"workflow_endpoint\":\"annotation\",\"dna_search_engine\":\"" << config.dna_search_engine << "\","
+        << "\"input_sags\":" << sags.size() << ",\"paired_read_inputs\":" << read_inputs
+        << ",\"contig_inputs\":" << contig_inputs << ",\"eligible_sags\":" << eligible.size()
+        << ",\"excluded_lt1000bp\":" << (sags.size() - eligible.size()) << ",\"labeled\":" << labeled.size()
+        << ",\"pending\":" << (eligible.size() - labeled.size()) << "}\n";
+    std::cout << "PASS annotation: input=" << sags.size() << " paired_reads=" << read_inputs
+              << " contigs=" << contig_inputs << " eligible=" << eligible.size()
+              << " excluded_lt1000bp=" << (sags.size() - eligible.size())
+              << " labeled=" << labeled.size() << " pending=" << (eligible.size() - labeled.size()) << "\n";
+    return 0;
+  }
   const auto subass_started = SteadyClock::now();
 
   fs::create_directories(config.out / "03A_subassemble");

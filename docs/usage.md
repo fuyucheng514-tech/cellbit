@@ -26,20 +26,68 @@ Detection uses the decompressed sequence records. File extensions are not used
 to decide whether an input is FASTA or FASTQ. Single-end FASTQ, mixed R1/R2
 types, truncated records and duplicate normalized SAG identifiers are rejected.
 
-## Default Stage 1–3A workflow
+## Command 1: species annotation only
+
+Use this command when you only need a species label for each eligible SAG and
+do not want Microsags to construct Stage 3A bins:
 
 ```bash
 pixi run microsags \
   --manifest SAGs.tsv \
-  --out microsags_output \
+  --out annotation_output \
+  --dna-tax /data/GTDB232/genome_taxonomy_1.csv \
+  --dna-packed-db /data/GTDB232/dna2bit-packed-index \
+  --threads 32 \
+  --memory-gb 128 \
+  --stop-after annotation
+```
+
+The command accepts paired reads, existing contigs, or a mixed manifest. For
+reads it first runs fastp and SPAdes; for contigs it skips those two steps.
+It stops after the original DNA2bit acceptance rule has produced:
+
+- `annotation_output/02_dna2bit/search_result.csv`: raw search result;
+- `annotation_output/02_dna2bit/labels.tsv`: accepted species annotations;
+- `annotation_output/03B_unclassified_pending.tsv`: rejected/no-hit SAGs;
+- `annotation_output/COMPLETE.json`: annotation-only PASS receipt.
+
+## Command 2: annotation and Stage 3A
+
+```bash
+pixi run microsags \
+  --manifest SAGs.tsv \
+  --out full_output \
   --dna-tax /data/GTDB232/genome_taxonomy_1.csv \
   --dna-packed-db /data/GTDB232/dna2bit-packed-index \
   --threads 32 \
   --memory-gb 128
 ```
 
-The same command accepts an all-contigs, all-reads or mixed manifest. The route
-is recorded per SAG in `INPUT_AUDIT.tsv`.
+Do not add `--stop-after annotation`. The program performs input preparation,
+DNA2bit annotation and species-guided Stage 3A subassembly. The route is
+recorded per SAG in `INPUT_AUDIT.tsv`.
+
+## Command 3: continue the same run through Stage 3B
+
+After Command 2 has completed successfully, prepare the required Stage 3B
+quality and bac120-marker evidence, then run:
+
+```bash
+pixi run sag-stage3b-tractor \
+  --manifest full_output/03B_unclassified_pending.tsv \
+  --quality-manifest stage3b_quality.tsv \
+  --marker-map bac120_marker_nt_map.tsv \
+  --ani-engine "$PWD/.pixi/envs/default/bin/gtdb-ani-af" \
+  --allow-experimental-ani-engine \
+  --leiden-backend "$PWD/python/stage3b_signed_leiden.py" \
+  --subass "$PWD/.pixi/envs/default/bin/cpp-subass" \
+  --out full_output/03B_unlabelled \
+  --threads 32
+```
+
+Therefore, the current complete 3A+3B workflow is **Command 2 followed by
+Command 3**. Stage 3B is not silently claimed to have run merely because the
+pending manifest exists.
 
 ## Functional outputs
 
@@ -57,9 +105,8 @@ The annotation products are:
 - `02_dna2bit/labels.tsv`: accepted reference, taxonomy and species group;
 - `03B_unclassified_pending.tsv`: eligible SAGs rejected or without a hit.
 
-The v0.1 main command continues from annotation into Stage 3A. It does not yet
-provide an annotation-only stop switch; users who only need annotations can
-consume the files above and ignore the Stage 3A directory.
+With `--stop-after annotation`, the command stops here and does not create
+Stage 3A group assemblies.
 
 ### Stage 3A: species-guided subassembly
 
@@ -79,20 +126,7 @@ Principal outputs:
 
 Stage 3B is a separate advanced executable. It consumes the Stage 3A hand-off
 manifest together with a CheckM2-derived quality table and a bac120 nucleotide
-marker table:
-
-```bash
-pixi run sag-stage3b-tractor \
-  --manifest microsags_output/03B_unclassified_pending.tsv \
-  --quality-manifest stage3b_quality.tsv \
-  --marker-map bac120_marker_nt_map.tsv \
-  --ani-engine "$PWD/.pixi/envs/default/bin/gtdb-ani-af" \
-  --allow-experimental-ani-engine \
-  --leiden-backend "$PWD/python/stage3b_signed_leiden.py" \
-  --subass "$PWD/.pixi/envs/default/bin/cpp-subass" \
-  --out microsags_output/03B_unlabelled \
-  --threads 32
-```
+marker table. Use Command 3 above.
 
 !!! warning
     The bundled Stage 3B ANI/AF path is experimental and is not a skani clone.
@@ -108,4 +142,3 @@ Intermediate file counts alone do not establish completion.
 python -m json.tool microsags_output/COMPLETE.json
 cat microsags_output/TIMING.tsv
 ```
-
