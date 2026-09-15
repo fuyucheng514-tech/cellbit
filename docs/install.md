@@ -73,14 +73,34 @@ cmake --install build --prefix "$HOME/.local"
 "$HOME/.local/bin/microsags" --help
 ```
 
-## Scientific databases
+## Download the k=17 GTDB232 database
 
-The source archive deliberately excludes large scientific databases. A run
-must provide a mutually compatible DNA2bit taxonomy table and packed index:
+The source archive and the scientific database are separate Release assets.
+Download the frozen packed database once:
 
 ```bash
-export MICROSAGS_DNA_TAX=/data/GTDB232/genome_taxonomy_1.csv
-export MICROSAGS_DNA_PACKED_DB=/data/GTDB232/dna2bit-packed-index
+mkdir -p "$HOME/microsags-data"
+cd "$HOME/microsags-data"
+
+wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.1.0/Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
+wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.1.0/Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
+sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
+tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
+```
+
+The download is 1,389,486,830 bytes and expands to approximately 1.4 GB. It
+contains 199,923 GTDB232 reference sketches generated with `k=17`,
+`bit_len=55296` and `hash_type=0`. The published archive SHA256 is:
+
+```text
+a14eff367239fdcfa539b98d36eb46d24cd4388f98c07b5e5c2689fd996d0a31
+```
+
+Point Microsags at the extracted directory:
+
+```bash
+export MICROSAGS_DNA_PACKED_DB="$HOME/microsags-data/dna2bit_gtdb232_packed_v1"
+export MICROSAGS_DNA_TAX="$MICROSAGS_DNA_PACKED_DB/genome_taxonomy.csv"
 ```
 
 The packed index receipt binds its taxonomy and reference-manifest checksums.
