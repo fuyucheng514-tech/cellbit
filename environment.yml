@@ -19,3 +19,4 @@ dependencies:
   - leidenalg>=0.10
   - pigz=2.8
   - pyyaml=6.0.2
+  - mkdocs>=1.6,<2

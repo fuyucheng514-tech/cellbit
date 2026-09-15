@@ -1,0 +1,40 @@
+{
+  "schema": "microsags-lake-quarter-verified-result-v1",
+  "status": "PASS",
+  "release": "v0.1.0",
+  "source_commit": "7d41168cad9aabc6ee01ce079c5942a7688e29f6",
+  "input": {
+    "source_sags": 13742,
+    "selected_sags": 3436,
+    "selected_input_bytes": 718690933,
+    "manifest_sha256": "3c2bb3387e70b22ff4cde5a867fbdff3339960a7dd5146080167f1f6034c5636"
+  },
+  "closure": {
+    "contig_inputs": 3436,
+    "paired_read_inputs": 0,
+    "eligible_sags": 3436,
+    "excluded_lt1000bp": 0,
+    "labeled_sags": 1873,
+    "pending_sags": 1563,
+    "stage3a_groups": 156,
+    "stage3a_complete_receipts": 156,
+    "stage3a_nonempty_bins": 156
+  },
+  "timing_seconds": {
+    "preflight_length_gate": 37.495226,
+    "sketch": 2.804879,
+    "search": 30.205983,
+    "stage3a_assemble_1t": 50.027206,
+    "stage3a_finish_2t": 203.325603,
+    "stage3a_subassemble": 253.352809,
+    "total": 323.858897
+  },
+  "core_output_sha256": {
+    "COMPLETE.json": "87444e522e9fb3bc085b939abca5aabd102c4fa0adb4ee4ae0d4f8b0ac615d84",
+    "TIMING.tsv": "47b6182e725a72426c02bd4f6a3f812b4ec6249841ee6639be7c3ceff45dd64a",
+    "INPUT_AUDIT.tsv": "1a9966cf95d52c35677e7951e1487dbf3d4f24000493a8367359b7ea297d9db1",
+    "labels.tsv": "d68d03ad89a9ebcc8b7e2890be59255ef4c8526569d823bc374eb61368b56942",
+    "groups.tsv": "74adbcb001136e0a48b4c18cf69e2283b8913778fa518a5deb52aa1750a7899e",
+    "03B_unclassified_pending.tsv": "253921da344419f3a8a9deec9cd607c47b09e473534712707a693282d0458428"
+  }
+}

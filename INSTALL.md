@@ -9,9 +9,9 @@ conda-forge and Bioconda.
 ```bash
 git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
 cd Microsags
-pixi install
+pixi install --frozen
 pixi run install
-pixi run microsags --help
+pixi run verify
 ```
 
 `pixi install` resolves the pinned compiler and runtime dependencies.
@@ -26,6 +26,19 @@ pixi run microsags \
   --dna-tax /absolute/path/to/genome_taxonomy_1.csv \
   --dna-packed-db /absolute/path/to/packed-index \
   --threads 8 --memory-gb 64
+```
+
+## Install from the GitHub release
+
+```bash
+wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.1.0/Microsags-v0.1.0-source.tar.gz
+echo "97f5b6893dfb21ac6b9a58525de4c802abeb9693eaa18dd38c18f5a631f7ba8e  Microsags-v0.1.0-source.tar.gz" | sha256sum -c -
+mkdir Microsags-v0.1.0-source
+tar -xzf Microsags-v0.1.0-source.tar.gz -C Microsags-v0.1.0-source
+cd Microsags-v0.1.0-source
+pixi install --frozen
+pixi run install
+pixi run verify
 ```
 
 ## Install with conda

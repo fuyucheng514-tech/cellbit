@@ -68,6 +68,12 @@ pixi 会从 conda-forge 和 Bioconda 建立隔离环境，并安装编译器、H
 SPAdes、Flye、BLAST+、python-igraph 和 leidenalg。完整的 pixi、conda 与源码安装说明见
 [INSTALL.md](INSTALL.md)。大型科学数据库不包含在源码仓库中。
 
+网站式文档见 [`docs/index.md`](docs/index.md)，包括独立的
+[Install](docs/install.md)、[Usage examples](docs/usage.md)、
+[湖水四分之一规模教程](docs/lake-quarter-tutorial.md)和
+[输出文件说明](docs/outputs.md)。推送到 `main` 后由 GitHub Actions 严格构建并
+发布为 GitHub Pages。
+
 ## 运行
 
 ```bash

@@ -4,5 +4,7 @@ tools/microsags text eol=lf
 *.cpp text eol=lf
 *.hpp text eol=lf
 *.toml text eol=lf
+*.lock text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+*.md text eol=lf

@@ -11,6 +11,7 @@ build = { cmd = "cmake --build build --parallel", depends-on = ["configure"] }
 test = { cmd = "ctest --test-dir build --output-on-failure", depends-on = ["build"] }
 install = { cmd = "cmake --install build", depends-on = ["build"] }
 verify = { cmd = "microsags --help", depends-on = ["install"] }
+docs = "mkdocs build --strict"
 
 [dependencies]
 python = "3.9.*"
@@ -28,3 +29,4 @@ python-igraph = ">=0.11,<1"
 leidenalg = ">=0.10,<1"
 pyyaml = ">=6,<7"
 pigz = ">=2.8,<3"
+mkdocs = ">=1.6,<2"

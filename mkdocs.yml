@@ -1,0 +1,35 @@
+site_name: Microsags
+site_description: Reproducible SAG species annotation and species-guided subassembly
+site_url: https://fuyucheng514-tech.github.io/cellbit/
+repo_url: https://github.com/fuyucheng514-tech/cellbit
+repo_name: fuyucheng514-tech/cellbit
+edit_uri: edit/main/docs/
+
+theme:
+  name: readthedocs
+  language: en
+  highlightjs: true
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Usage examples: usage.md
+  - Lake quarter tutorial: lake-quarter-tutorial.md
+  - Output reference: outputs.md
+  - Stage 3B advanced workflow: stage3b.md
+
+exclude_docs: |
+  index.html
+  styles.css
+  app.js
+  favicon.svg
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+strict: true
+
