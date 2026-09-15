@@ -30,6 +30,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: requirements-docs.txt
       - name: Install documentation dependencies
         run: python -m pip install -r requirements-docs.txt
       - name: Build documentation strictly
@@ -51,4 +52,3 @@ jobs:
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
