@@ -27,21 +27,19 @@ microsags sketch references/ -x taxonomy.csv -o database
 
 ## Input examples
 
-Assembled SAGs:
-
-```text
-SAGs/
-└── SAG_0001.fna
-```
-
 Paired reads:
 
 ```text
 SAGs/
 ├── SAG_0001_R1.fastq.gz
-├── SAG_0001_R2.fastq.gz
-├── SAG_0002_R1.fastq.gz
-└── SAG_0002_R2.fastq.gz
+└── SAG_0001_R2.fastq.gz
+```
+
+Assembled SAGs:
+
+```text
+SAGs/
+└── SAG_0001.fna
 ```
 
 ## Common options

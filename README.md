@@ -59,21 +59,19 @@ an input type. Without `-i`, Microsags recognizes `.fq`, `.fastq`, `.fa`,
 
 ## Input
 
-For assembled data, place one FASTA file per SAG in a directory:
-
-```text
-SAGs/
-└── SAG_0001.fna
-```
-
 For reads, provide one R1/R2 pair per SAG:
 
 ```text
 SAGs/
 ├── SAG_0001_R1.fastq.gz
-├── SAG_0001_R2.fastq.gz
-├── SAG_0002_R1.fastq.gz
-└── SAG_0002_R2.fastq.gz
+└── SAG_0001_R2.fastq.gz
+```
+
+For assembled data, place one FASTA file per SAG in a directory:
+
+```text
+SAGs/
+└── SAG_0001.fna
 ```
 
 ## Output
