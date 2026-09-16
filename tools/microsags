@@ -8,6 +8,30 @@ VERSION = "0.3.0"
 FASTA = (".fasta", ".fna", ".fa", ".fas")
 FASTQ = (".fastq", ".fq")
 
+def _load_installed_runtime():
+    """Make install-time dependencies available to child programs."""
+    config = Path(__file__).resolve().parent.parent / "share" / "microsags" / "runtime.env"
+    if not config.is_file():
+        return
+    values = {}
+    for raw in config.read_text(encoding="utf-8").splitlines():
+        if "=" not in raw:
+            continue
+        key, value = raw.split("=", 1)
+        if key in {"RUNTIME_BIN", "RUNTIME_LIB"} and value:
+            values[key] = value
+    if values.get("RUNTIME_BIN"):
+        os.environ["PATH"] = values["RUNTIME_BIN"] + os.pathsep + os.environ.get("PATH", "")
+    if values.get("RUNTIME_LIB"):
+        os.environ["LD_LIBRARY_PATH"] = values["RUNTIME_LIB"] + os.pathsep + os.environ.get("LD_LIBRARY_PATH", "")
+    runtime_python = Path(values.get("RUNTIME_BIN", "")) / "python"
+    if (runtime_python.is_file() and not os.environ.get("_MICROSAGS_RUNTIME_REEXEC")
+            and Path(sys.executable).resolve() != runtime_python.resolve()):
+        os.environ["_MICROSAGS_RUNTIME_REEXEC"] = "1"
+        os.execve(runtime_python, [str(runtime_python), str(Path(__file__).resolve()), *sys.argv[1:]], os.environ)
+
+_load_installed_runtime()
+
 class Error(RuntimeError): pass
 
 def exe(name):

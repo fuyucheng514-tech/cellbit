@@ -11,6 +11,20 @@ cmake "${cmake_args[@]}"
 cmake --build "$ROOT/build" -j "$JOBS"
 test -x "$ROOT/build/dna2bit-sag-pipeline" || { echo "dna2bit-sag-pipeline was not produced" >&2; exit 3; }
 cmake --install "$ROOT/build"
+
+# Record the dependency runtime used for this installation. The launcher
+# reads it before starting child programs, so users do not need to activate
+# the build environment again just to run Microsags.
+runtime_file="$PREFIX/share/microsags/runtime.env"
+mkdir -p "$(dirname "$runtime_file")"
+if [ -n "${CONDA_PREFIX:-}" ]; then
+  {
+    printf 'RUNTIME_BIN=%s/bin\n' "$CONDA_PREFIX"
+    printf 'RUNTIME_LIB=%s/lib\n' "$CONDA_PREFIX"
+  } > "$runtime_file"
+else
+  : > "$runtime_file"
+fi
 printf 'Installed to %s\n' "$PREFIX"
 printf 'Main executable: %s/bin/microsags\n' "$PREFIX"
 printf 'Set PATH with: export PATH="%s/bin:$PATH"\n' "$PREFIX"
