@@ -20,14 +20,6 @@ microsags --help
 `environment.yml` installs the compiler and runtime dependencies. `install.sh`
 builds the C++17 programs and installs them into the active environment.
 
-Run installed commands directly:
-
-```bash
-microsags --help
-microsags annotate --help
-microsags assemble --help
-```
-
 ## Install the current source without Git
 
 This route does not require Git:
@@ -74,11 +66,6 @@ wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.1.0/Micro
 sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
-
-The packed index receipt binds its taxonomy and reference-manifest checksums.
-Microsags fails closed when the database is missing or mismatched.
-
-Continue with [Usage examples](usage.md) after installation.
 
 ## Package-manager status
 
