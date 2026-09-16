@@ -75,7 +75,7 @@ sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
 
-The download is 1,389,486,830 bytes and expands to approximately 1.4 GB. It
+The database is approximately 1.4 GB. It
 contains 199,923 GTDB232 reference sketches generated with `k=17`,
 `bit_len=55296` and `hash_type=0`. The published archive SHA256 is:
 
