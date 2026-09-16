@@ -11,6 +11,43 @@ one SAG and has one of the following forms.
 | Paired reads | `SAG_ID<TAB>R1<TAB>R2` | fastp → SPAdes `--sc --careful` → length gate |
 | Existing contigs | `SAG_ID<TAB>assembly_fasta` | preserve/decompress FASTA → length gate |
 
+### Paired FASTQ reads
+
+`SAGs/` can contain one R1/R2 pair per SAG:
+
+```text
+SAGs/
+├── SAG_0001_R1.fastq.gz
+└── SAG_0001_R2.fastq.gz
+```
+
+```bash
+microsags annotate --input-type fastq SAGs/ -d database -o annotation_output
+```
+
+### Assembled contigs
+
+Place one FASTA file per SAG:
+
+```text
+SAGs/
+└── SAG_0001.fna
+```
+
+The contents of `SAG_0001.fna` look like this (sequences shortened for
+display):
+
+```text
+>contig_1
+ATGCGTACGTTAGCTAGCTAGCTGACTG...
+>contig_2
+GCTTACGATCGATCGGATCGATGCA...
+```
+
+```bash
+microsags annotate --input-type contigs SAGs/ -d database -o annotation_output
+```
+
 An optional header is accepted:
 
 ```text

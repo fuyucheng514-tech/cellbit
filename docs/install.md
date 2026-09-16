@@ -75,47 +75,10 @@ sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
 
-For paired reads, `SAGs/` can contain one R1/R2 pair per SAG:
-
-```text
-SAGs/
-├── SAG_0001_R1.fastq.gz
-└── SAG_0001_R2.fastq.gz
-```
-
-```bash
-microsags annotate --input-type fastq SAGs/ -d database -o annotation_output
-```
-
-For assembled contigs, place one FASTA file per SAG:
-
-```text
-SAGs/
-└── SAG_0001.fna
-```
-
-The contents of `SAG_0001.fna` look like this (sequences shortened here only
-for display):
-
-```text
->contig_1
-ATGCGTACGTTAGCTAGCTAGCTGACTG...
->contig_2
-GCTTACGATCGATCGGATCGATGCA...
-```
-
-Run annotation directly on assembled contigs:
-
-```bash
-microsags annotate --input-type contigs SAGs/ -d database -o annotation_output
-```
-
 The packed index receipt binds its taxonomy and reference-manifest checksums.
 Microsags fails closed when the database is missing or mismatched.
 
-Stage 3B is launched by `microsags assemble`. CheckM2 and GTDB-Tk databases are
-external data resources and must be supplied with `--checkm2-database` and
-`--gtdbtk-data` (or their documented environment variables).
+Continue with [Usage examples](usage.md) after installation.
 
 ## Package-manager status
 
