@@ -43,6 +43,7 @@ struct Config {
   fs::path python="python3", leiden_backend, subass="cpp-subass";
   fs::path flye_root="/home/data/fyc/biosoft/miniconda3/envs/assemble";
   int threads=16;
+  double leiden_resolution=-1.0;
   bool dry=false, resume=false, self_test=false, allow_experimental_ani=false;
   std::vector<fs::path> flye_provenance;
 };
@@ -352,12 +353,14 @@ static Config parse(int argc,char**argv) {
     else if(a=="--ani-engine")c.ani_engine=val();else if(a=="--makeblastdb")c.makeblastdb=val();else if(a=="--blastn")c.blastn=val();
     else if(a=="--python")c.python=val();else if(a=="--leiden-backend")c.leiden_backend=val();else if(a=="--subass")c.subass=val();else if(a=="--flye-root")c.flye_root=val();
     else if(a=="--threads"){auto s=val().string();c.threads=static_cast<int>(integer(s,"threads"));if(c.threads<1)throw std::runtime_error("threads must be >=1");}
+    else if(a=="--leiden-resolution"){auto s=val().string();c.leiden_resolution=number(s,"leiden-resolution");if(!(c.leiden_resolution>0.0))throw std::runtime_error("leiden-resolution must be >0");}
     else if(a=="--dry-run")c.dry=true;else if(a=="--resume")c.resume=true;else if(a=="--self-test")c.self_test=true;else if(a=="--allow-experimental-ani-engine")c.allow_experimental_ani=true;
     else if(a=="--help"||a=="-h"){
       std::cout<<"sag-stage3b-tractor --manifest 03B_unclassified_pending.tsv --quality-manifest quality.tsv\n"
         "  --marker-map bac120_marker_nt_map.tsv\n"
         "  --ani-engine gtdb-ani-af --allow-experimental-ani-engine\n"
-        "  --leiden-backend stage3b_signed_leiden.py --out DIR [--threads N --resume --dry-run]\n"
+        "  --leiden-backend stage3b_signed_leiden.py --out DIR [--leiden-resolution FLOAT]\n"
+        "  [--threads N --resume --dry-run]\n"
         "  Stage3B does not search GTDB references: every Dna2bit-negative SAG passing\n"
         "  max_contig>=1000 and CheckM2 contamination<5 enters an exact all-pairs triangle.\n";
       std::exit(0);
@@ -609,8 +612,8 @@ int main(int argc,char**argv)try{
   // the seed, parameter order, tie-breaking, or selected membership.
   const int leiden_workers=std::min(6,c.threads);
   const std::string leiden_workers_text=std::to_string(leiden_workers);
-  fs::path ld=c.out/"05_signed_leiden",membership=ld/"chosen_membership.tsv",report=ld/"signed_report.json";std::string lc=q(c.python)+" "+q(c.leiden_backend)+" --nodes "+q(node_tsv)+" --positive "+q(pos_tsv)+" --marker-pairs "+q(marker_pairs)+" --negative "+q(neg_edges)+" --membership "+q(membership)+" --report "+q(report)+" --workers "+leiden_workers_text;run_stage("signed_leiden_sweep",lc,{membership,report},ld/"PASS.json",c,{node_tsv,pos_tsv,marker_pairs,neg_edges,c.python,c.leiden_backend},"seed=20260811\nn_iterations=-1\nparameters=1:1,1:3,1:10,2:3,2:10,2:30\nworkers="+leiden_workers_text,false,
-    {c.python.string(),c.leiden_backend.string(),"--nodes",node_tsv.string(),"--positive",pos_tsv.string(),"--marker-pairs",marker_pairs.string(),"--negative",neg_edges.string(),"--membership",membership.string(),"--report",report.string(),"--workers",leiden_workers_text});
+  fs::path ld=c.out/"05_signed_leiden",membership=ld/"chosen_membership.tsv",report=ld/"signed_report.json";std::string lc=q(c.python)+" "+q(c.leiden_backend)+" --nodes "+q(node_tsv)+" --positive "+q(pos_tsv)+" --marker-pairs "+q(marker_pairs)+" --negative "+q(neg_edges)+" --membership "+q(membership)+" --report "+q(report)+" --workers "+leiden_workers_text;std::vector<std::string> leiden_argv={c.python.string(),c.leiden_backend.string(),"--nodes",node_tsv.string(),"--positive",pos_tsv.string(),"--marker-pairs",marker_pairs.string(),"--negative",neg_edges.string(),"--membership",membership.string(),"--report",report.string(),"--workers",leiden_workers_text};std::string leiden_contract="seed=20260811\nn_iterations=-1\nparameters=1:1,1:3,1:10,2:3,2:10,2:30\nworkers="+leiden_workers_text;if(c.leiden_resolution>0.0){const std::string value=std::to_string(c.leiden_resolution);lc+=" --leiden-resolution "+value;leiden_argv.push_back("--leiden-resolution");leiden_argv.push_back(value);leiden_contract+="\nuser_resolution="+value;}run_stage("signed_leiden_sweep",lc,{membership,report},ld/"PASS.json",c,{node_tsv,pos_tsv,marker_pairs,neg_edges,c.python,c.leiden_backend},leiden_contract,false,
+    leiden_argv);
   TsvReader mr(membership);auto mc=mr.column({"cluster"});auto ms=mr.column({"SAG_id","sag_id"});auto mz=mr.column({"cluster_size"});std::map<std::string,std::vector<std::string>> groups;std::map<std::string,std::uint64_t> declared_sizes;std::set<std::string> assigned;std::vector<std::string> membership_row;
   while(mr.next(membership_row)){auto id=membership_row[ms],cl=safe_id(membership_row[mc]);auto declared=integer(membership_row[mz],"cluster_size");if(!graph_nodes.count(id))throw std::runtime_error("Leiden returned unknown/non-eligible SAG: "+id);if(declared<10)throw std::runtime_error("backend emitted cluster below size 10");if(!assigned.insert(id).second)throw std::runtime_error("SAG occurs in multiple output clusters: "+id);auto [it,inserted]=declared_sizes.emplace(cl,declared);if(!inserted&&it->second!=declared)throw std::runtime_error("inconsistent declared cluster_size for "+cl);groups[cl].push_back(id);}
   for(const auto&[cl,v]:groups)if(declared_sizes.at(cl)!=v.size())throw std::runtime_error("cluster_size mismatch for "+cl);

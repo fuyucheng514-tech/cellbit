@@ -1,40 +1,36 @@
 # Microsags
 
-Microsags is a Linux command-line workflow for single-amplified genome (SAG)
-species annotation and species-guided subassembly. It accepts assembled SAG
-contigs or paired short reads as direct paths, directories, or path lists. The
-route can be selected explicitly with `--input-type`; otherwise the public CLI
-infers it from standard FASTA/FASTQ filename suffixes and the C++ reader still
-validates the actual decompressed records before any scientific processing.
+Microsags provides DNA2bit species annotation and species-guided subassembly
+for single-amplified genomes (SAGs).
 
-The v0.2 public CLI provides `sketch`, `annotate`, and `assemble`. The complete
-`assemble` workflow performs five auditable operations:
+## Annotation mode
 
-1. validate and route every SAG input;
-2. assemble paired reads with fastp and SPAdes, while preserving supplied
-   contigs without reassembly;
-3. classify eligible SAGs with the embedded, teacher-compatible DNA2bit
-   `k=17` packed search;
-4. subassemble DNA2bit-labelled SAGs by species in Stage 3A;
-5. process DNA2bit-negative SAGs through the Stage 3B evidence, graph-clustering
-   and subassembly chain.
+Annotation mode accepts paired FASTQ reads, singleton FASTQ reads, or assembled
+contigs. FASTQ reads are quality-controlled with fastp and passed directly to
+DNA2bit; they are not assembled first.
 
-`annotate` stops after operation 3. `assemble` runs both Stage 3A and Stage 3B;
-the CheckM2 and GTDB-Tk resources required by Stage 3B remain external.
+```bash
+microsags annotate SAGs/ -d database -o annotation_output
+```
 
-## Start here
+The principal result maps each SAG identifier to an accepted species label.
 
-- [Install](install.md) describes Conda/Mamba and source builds.
-- [Usage examples](usage.md) explains the input routes and functional outputs.
-- [Lake quarter tutorial](lake-quarter-tutorial.md) records a reproducible
-  3,436-SAG integration example.
-- [Output reference](outputs.md) defines the files emitted by each stage.
+## Assembly mode
 
-## Scope and scientific identity
+Assembly mode is the next step. It accepts one contig FASTA per SAG and a
+completed Annotation-mode output directory.
 
-Microsags embeds the compatible C++ implementation of the original DNA2bit
-sketch and packed-search semantics. It does not use Cellbit57 ALC, Top16,
-skani-based GTDB classification, or a trained Cellbit57 model. Mature external
-algorithms such as fastp, SPAdes and Flye remain declared, versioned
-dependencies; orchestration and scientific receipts do not rename those tools
-as native Microsags algorithms.
+```bash
+microsags assemble --input-type contigs SAG_contigs/ \
+  --annotations annotation_output \
+  -o assembly_output \
+  --checkm2-database checkm2_database \
+  --gtdbtk-data gtdbtk_database
+```
+
+Labelled SAGs enter Stage 3A; unclassified SAGs enter Stage 3B. Both routes use
+the existing `cpp-subass`/Flye subassembly workflow. If annotation was run
+from FASTQ reads, users must first assemble every SAG independently and preserve
+the same SAG identifiers.
+
+Continue with [Install](install.md) or [Usage examples](usage.md).

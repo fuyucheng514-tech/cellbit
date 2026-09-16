@@ -72,7 +72,10 @@ class Inputs(unittest.TestCase):
             root=Path(d); db=root/"db"; db.mkdir()
             for name in ("references.pack","references.tsv","genome_taxonomy.csv"):
                 (db/name).write_text("x\n")
-            args=Namespace(database=str(db),output=str(root/"out"),threads=2)
+            annotations=root/"annotations"; (annotations/"02_dna2bit").mkdir(parents=True)
+            (annotations/"02_dna2bit/labels.tsv").write_text("sag_id\treference\ttaxonomy\tspecies_group\n")
+            (annotations/"03B_unclassified_pending.tsv").write_text("sag_id\tassembly_fasta\treason\n")
+            args=Namespace(annotations=str(annotations),output=str(root/"out"),threads=2)
             prefix=root/"microsags"
             binaries={"dna2bit-sag-pipeline":str(prefix/"bin/dna2bit-sag-pipeline"),
                       "cpp-subass":str(prefix/"bin/cpp-subass"),

@@ -192,21 +192,21 @@ def _run_signed_parameter(index_and_parameter):
     return index, parts
 
 
-def evaluate_parameters(nodes, positive, negative, workers=1):
-    """Evaluate the frozen sweep, returning partitions in PARAMETERS order."""
+def evaluate_parameters(nodes, positive, negative, workers=1, parameters=PARAMETERS):
+    """Evaluate the requested sweep, returning partitions in parameter order."""
     if isinstance(workers, bool) or not isinstance(workers, int) or workers < 1:
         raise ContractError("workers must be a positive integer")
     if not positive:
         # With no attraction edge, the only valid maximum is singleton output;
         # avoiding RB's zero-total-weight division is deterministic.
-        return [[{node} for node in nodes] for _ in PARAMETERS]
+        return [[{node} for node in nodes] for _ in parameters]
     if workers == 1:
         # Preserve the historical execution path exactly by default.
         return [signed_leiden(nodes, positive, negative, resolution, lam)
-                for resolution, lam in PARAMETERS]
+                for resolution, lam in parameters]
 
-    worker_count = min(workers, len(PARAMETERS))
-    indexed_parameters = tuple(enumerate(PARAMETERS))
+    worker_count = min(workers, len(parameters))
+    indexed_parameters = tuple(enumerate(parameters))
     # Always spawn: unlike threads, each optimiser has an isolated native RNG;
     # unlike fork, this has the same semantics on Linux, macOS and Windows.
     context = multiprocessing.get_context("spawn")
@@ -305,9 +305,13 @@ def run(args):
     reports = []
     best = None
     workers = getattr(args, "workers", 1)
+    parameters = PARAMETERS
+    if getattr(args, "leiden_resolution", None) is not None:
+        resolution = args.leiden_resolution
+        parameters = tuple((resolution, lam) for lam in (1.0, 3.0, 10.0, 30.0))
     partitions = evaluate_parameters(
-        nodes, positive, negative, workers=workers)
-    for (resolution, lam), parts in zip(PARAMETERS, partitions):
+        nodes, positive, negative, workers=workers, parameters=parameters)
+    for (resolution, lam), parts in zip(parameters, partitions):
         detail, score, violated = summarise(parts, marker_pairs, negative)
         tag = f"gs_r{resolution:.1f}_lam{int(lam)}"
         record = {
@@ -345,7 +349,8 @@ def run(args):
             "negative_resolution": 0.0,
             "multiplex_layer_weights": [1, -1],
             "selection": "lexicographic (pure clusters size>=10 and purity>=0.9, SAGs therein)",
-            "parameter_order": [list(x) for x in PARAMETERS],
+            "parameter_order": [list(x) for x in parameters],
+            "user_resolution": getattr(args, "leiden_resolution", None),
         },
         "sweep": reports,
     }
@@ -442,12 +447,17 @@ def cli():
         "--workers", type=int, default=1,
         help=("independent signed-Leiden parameter processes (default: 1; "
               "values above 6 are capped at the six frozen parameter sets)"))
+    parser.add_argument(
+        "--leiden-resolution", type=float,
+        help="override positive-layer Leiden resolution; all other rules remain unchanged")
     parser.add_argument("--precluster", action="store_true",
                         help="positive-only Leiden marker-target stage")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.workers < 1:
         parser.error("--workers must be >=1")
+    if args.leiden_resolution is not None and (not math.isfinite(args.leiden_resolution) or args.leiden_resolution <= 0):
+        parser.error("--leiden-resolution must be a finite number greater than zero")
     if args.self_test:
         self_test()
         return

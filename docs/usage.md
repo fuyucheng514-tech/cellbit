@@ -1,20 +1,23 @@
 # Usage examples
 
-Microsags provides two operating modes: **Annotation mode** and
-**Assembly mode**.
+Microsags has two consecutive modes. Run **Annotation mode** first. If genome
+assembly is required, prepare one contig FASTA per SAG and then run
+**Assembly mode** with the completed annotation directory.
 
 ## Annotation mode
 
-Annotation mode assigns a DNA2bit species label to each eligible SAG and then
-stops. It does not run Stage 3A or Stage 3B.
+Annotation mode assigns a DNA2bit species label to each SAG. It accepts paired
+FASTQ reads, singleton FASTQ reads, or assembled contigs. It does not run
+Stage 3A, Stage 3B or subassembly.
+
+For FASTQ input, Microsags runs fastp and sends all cleaned reads from each SAG
+directly to DNA2bit. It does not run SPAdes.
 
 ### Paired FASTQ reads
 
 ```bash
 microsags annotate --input-type fastq SAGs/ -d database -o annotation_output
 ```
-
-Example input with one R1/R2 pair per SAG:
 
 ```text
 SAGs/
@@ -27,15 +30,11 @@ SAGs/
 └── ...
 ```
 
-FASTQ input is processed with fastp and SPAdes before annotation.
-
 ### Singleton FASTQ reads
 
 ```bash
 microsags annotate --input-type singleton SAGs/ -d database -o annotation_output
 ```
-
-Example input with one single-end FASTQ file per SAG:
 
 ```text
 SAGs/
@@ -45,16 +44,11 @@ SAGs/
 └── ...
 ```
 
-Singleton input is processed with fastp and SPAdes single-end mode before
-annotation.
-
 ### Assembled contigs
 
 ```bash
 microsags annotate --input-type contigs SAGs/ -d database -o annotation_output
 ```
-
-Example input with one FASTA file per SAG:
 
 ```text
 SAGs/
@@ -64,27 +58,8 @@ SAGs/
 └── ...
 ```
 
-A SAG FASTA may contain multiple contigs:
-
-```text
->contig_1
-ATGCGTACGTTAGCTAGCTAGCTGACTG...
->contig_2
-GCTTACGATCGATCGGATCGATGCA...
-```
-
-Contig input skips fastp and SPAdes.
-
-If `--input-type` is omitted, Microsags automatically recognizes standard
-FASTQ and FASTA filename extensions:
-
-```bash
-microsags annotate SAGs/ -d database -o annotation_output
-```
-
-The annotation result is written to
-`annotation_output/02_dna2bit/labels.tsv`. The two principal columns are the
-SAG identifier and its accepted species label.
+The principal result is
+`annotation_output/02_dna2bit/labels.tsv`.
 
 Example result (illustrative species names):
 
@@ -96,120 +71,87 @@ SAG_0003    Example_species_C
 ...         ...
 ```
 
+## Prepare contigs for Assembly mode
+
+Assembly mode accepts contigs only. If Annotation mode used FASTQ reads, first
+assemble each SAG independently with SPAdes or another short-read assembler.
+Keep the same SAG identifiers:
+
+```text
+Annotation SAG ID          Assembly input
+SAG_0001             →     SAG_0001.fna
+SAG_0002             →     SAG_0002.fna
+SAG_0003             →     SAG_0003.fna
+```
+
+Microsags requires the contig SAG set to match the union of labelled and
+unclassified SAGs in `annotation_output`. A missing, extra or duplicate SAG
+causes a hard stop.
+
 ## Assembly mode
 
-Assembly mode runs DNA2bit annotation followed by Stage 3A assembly of
-labelled SAGs and Stage 3B assembly of unlabelled SAGs.
-
-### Paired FASTQ reads
+Assembly mode reads prior species annotations and per-SAG contigs. It does not
+run fastp, SPAdes or DNA2bit again.
 
 ```bash
-microsags assemble --input-type fastq SAGs/ -d database -o assembly_output \
+microsags assemble --input-type contigs SAG_contigs/ \
+  --annotations annotation_output \
+  -o assembly_output \
   --checkm2-database checkm2_database \
   --gtdbtk-data gtdbtk_database
 ```
 
-Example input with one R1/R2 pair per SAG:
-
 ```text
-SAGs/
-├── SAG_0001_R1.fastq.gz
-├── SAG_0001_R2.fastq.gz
-├── SAG_0002_R1.fastq.gz
-├── SAG_0002_R2.fastq.gz
-├── SAG_0003_R1.fastq.gz
-├── SAG_0003_R2.fastq.gz
-└── ...
-```
-
-FASTQ input is processed with fastp and SPAdes before annotation and assembly.
-
-### Singleton FASTQ reads
-
-```bash
-microsags assemble --input-type singleton SAGs/ -d database -o assembly_output \
-  --checkm2-database checkm2_database \
-  --gtdbtk-data gtdbtk_database
-```
-
-Example input with one single-end FASTQ file per SAG:
-
-```text
-SAGs/
-├── SAG_0001.fastq.gz
-├── SAG_0002.fastq.gz
-├── SAG_0003.fastq.gz
-└── ...
-```
-
-Singleton input is processed with fastp and SPAdes single-end mode before
-annotation and assembly.
-
-### Assembled contigs
-
-```bash
-microsags assemble --input-type contigs SAGs/ -d database -o assembly_output \
-  --checkm2-database checkm2_database \
-  --gtdbtk-data gtdbtk_database
-```
-
-Example input with one FASTA file per SAG:
-
-```text
-SAGs/
+SAG_contigs/
 ├── SAG_0001.fna
 ├── SAG_0002.fna
 ├── SAG_0003.fna
 └── ...
 ```
 
-Contig input skips fastp and SPAdes.
+Labelled SAGs are grouped by their DNA2bit species label and processed by
+Stage 3A. Unclassified SAGs are processed by the Stage 3B evidence and
+graph-clustering workflow. Both routes retain the existing
+`cpp-subass`/Flye subassembly logic.
 
-Main outputs:
+The Stage 3B Leiden resolution is optional and adjustable:
 
-- `02_dna2bit/labels.tsv`: accepted species annotations;
-- `03A_subassemble/`: Stage 3A groups and assemblies;
-- `stage3b/`: Stage 3B clustering and assemblies;
-- `TIMING.tsv`: stage wall-clock times;
-- `COMPLETE.json`: final completion status.
+```bash
+microsags assemble --input-type contigs SAG_contigs/ \
+  --annotations annotation_output \
+  -o assembly_output \
+  --checkm2-database checkm2_database \
+  --gtdbtk-data gtdbtk_database \
+  --leiden-resolution 0.18
+```
+
+When this option is omitted, Microsags uses the frozen default Leiden sweep.
+All other clustering rules remain unchanged.
 
 Example output:
 
 ```text
 assembly_output/
-├── 01_assembly/
-├── 02_dna2bit/
-│   └── labels.tsv
 ├── 03A_subassemble/
-│   ├── groups.tsv
-│   ├── species_group_1/run/assembly.fasta
+│   ├── Example_species_A/run/assembly.fasta
+│   ├── Example_species_B/run/assembly.fasta
 │   └── ...
-├── 03B_unclassified_pending.tsv
 ├── stage3b/
-│   ├── input/
-│   ├── stats/
-│   ├── upstream/
-│   ├── evidence/
 │   └── result/
-├── TIMING.tsv
+│       ├── 06_subassemble/cluster_00001/run/assembly.fasta
+│       └── ...
 └── COMPLETE.json
 ```
 
 ## Common options
 
-| Option | Meaning |
-|---|---|
-| `-i, --input-type` | `auto`, `fastq`, `singleton` or `contigs` |
-| `-d, --database` | DNA2bit database directory |
-| `-o, --output` | New output directory |
-| `-t, --threads` | Number of worker threads |
-| `-l, --file-list` | File containing one input path per line |
-| `-h, --help` | Show command help |
-
-## Completion check
-
-A completed run writes `COMPLETE.json`. Check it with:
-
-```bash
-python -m json.tool assembly_output/COMPLETE.json
-```
+| Option | Mode | Meaning |
+|---|---|---|
+| `-i, --input-type` | Annotation | `auto`, `fastq`, `singleton` or `contigs` |
+| `-i, --input-type` | Assembly | `contigs` only |
+| `-d, --database` | Annotation | DNA2bit database directory |
+| `-a, --annotations` | Assembly | Completed Annotation-mode output directory |
+| `-o, --output` | Both | New write-once output directory |
+| `-t, --threads` | Both | Number of worker threads |
+| `--leiden-resolution` | Assembly | Optional Stage 3B Leiden resolution |
+| `-h, --help` | Both | Show command help |

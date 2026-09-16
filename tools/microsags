@@ -120,7 +120,7 @@ def pair_paths(paths):
     return out
 
 def rows(args):
-    read_mode = any((args.reads1, args.reads2, args.r1_list, args.r2_list))
+    read_mode = any(getattr(args,name,None) for name in ("reads1","reads2","r1_list","r2_list"))
     requested=getattr(args,"input_type","auto")
     if requested=="fastq": requested="reads"
     if requested=="singleton" and read_mode: raise Error("--input-type singleton uses sequence paths, a directory, or --file-list")
@@ -145,7 +145,7 @@ def rows(args):
         return ["sag_id","r1","r2"],pair_paths(ps)
     if requested=="contigs": raise Error("read-pair options require --input-type fastq or auto")
     if args.inputs or args.file_list: raise Error("FASTA inputs cannot be mixed with reads")
-    if args.reads1 or args.reads2:
+    if getattr(args,"reads1",None) or getattr(args,"reads2",None):
         if not (args.reads1 and args.reads2) or args.r1_list or args.r2_list: raise Error("use -1 and -2 together")
         left, right = [file(args.reads1)], [file(args.reads2)]
     else:
@@ -183,15 +183,19 @@ def flye_root():
     return Path(exe("flye")).resolve().parent.parent
 
 def pipeline(args, manifest, annotation):
-    db = Path(args.database).expanduser().resolve()
-    for name in ("references.pack", "references.tsv", "genome_taxonomy.csv"): file(db/name)
     out = Path(args.output).expanduser().resolve()
     if out.exists(): raise Error(f"write-once output exists: {out}")
     cmd = [exe("dna2bit-sag-pipeline"), "--manifest", manifest, "--out", out,
-           "--threads", args.threads, "--memory-gb", memory_gb(), "--dna-tax", db/"genome_taxonomy.csv",
-           "--dna-search-engine", "packed", "--dna-packed-db", db]
-    cmd += (["--stop-after", "annotation"] if annotation else
-            ["--subass", exe("cpp-subass"), "--flye-root", flye_root()])
+           "--threads", args.threads, "--memory-gb", memory_gb()]
+    if annotation:
+        db = Path(args.database).expanduser().resolve()
+        for name in ("references.pack", "references.tsv", "genome_taxonomy.csv"): file(db/name)
+        cmd += ["--dna-tax", db/"genome_taxonomy.csv", "--dna-search-engine", "packed",
+                "--dna-packed-db", db, "--stop-after", "annotation"]
+    else:
+        annotations = Path(args.annotations).expanduser().resolve()
+        file(annotations/"02_dna2bit/labels.tsv"); file(annotations/"03B_unclassified_pending.tsv")
+        cmd += ["--annotations", annotations, "--subass", exe("cpp-subass"), "--flye-root", flye_root()]
     run(cmd)
 
 def stage3b(args):
@@ -210,10 +214,14 @@ def stage3b(args):
     env=os.environ.copy(); env["GTDBTK_DATA_PATH"]=str(Path(gdb).resolve())
     run([gtdbtk,"identify","--genome_dir",view/"input_fna","--out_dir",upstream/"gtdbtk","-x","fna","--cpus",args.threads,"--force","--write_single_copy_genes"], env)
     run([sys.executable,helper("finalize_stage3b_upstream.py"),"--pending",pending,"--stats",stats/"STAGE3B_FASTA_STATS.tsv","--input-view",view,"--checkm2-report",upstream/"checkm2/quality_report.tsv","--identify-root",upstream/"gtdbtk","--out-dir",evidence])
-    run([exe("sag-stage3b-tractor"),"--manifest",pending,"--quality-manifest",evidence/"stage3b_quality.tsv","--marker-map",evidence/"bac120_marker_nt_map.tsv","--ani-engine",exe("gtdb-ani-af"),"--allow-experimental-ani-engine","--makeblastdb",exe("makeblastdb"),"--blastn",exe("blastn"),"--python",sys.executable,"--leiden-backend",helper("stage3b_signed_leiden.py"),"--subass",exe("cpp-subass"),"--flye-root",flye_root(),"--threads",args.threads,"--out",result])
+    command=[exe("sag-stage3b-tractor"),"--manifest",pending,"--quality-manifest",evidence/"stage3b_quality.tsv","--marker-map",evidence/"bac120_marker_nt_map.tsv","--ani-engine",exe("gtdb-ani-af"),"--allow-experimental-ani-engine","--makeblastdb",exe("makeblastdb"),"--blastn",exe("blastn"),"--python",sys.executable,"--leiden-backend",helper("stage3b_signed_leiden.py"),"--subass",exe("cpp-subass"),"--flye-root",flye_root(),"--threads",args.threads,"--out",result]
+    if args.leiden_resolution is not None: command += ["--leiden-resolution",args.leiden_resolution]
+    run(command)
 
 def annotate_assemble(args):
     header, data = rows(args); parent=Path(args.output).expanduser().resolve().parent; parent.mkdir(parents=True,exist_ok=True)
+    if args.command=="assemble" and header != ["sag_id", "assembly_fasta"]:
+        raise Error("assembly mode accepts only per-SAG FASTA contigs; use --input-type contigs")
     with tempfile.NamedTemporaryFile("w",encoding="utf-8",newline="",suffix=".tsv",dir=parent,delete=False) as h:
         manifest=Path(h.name); w=csv.writer(h,delimiter="\t",lineterminator="\n"); w.writerow(header); w.writerows(data)
     try:
@@ -254,23 +262,34 @@ def make_parser():
     s.add_argument("-x","--taxonomy",required=True,metavar="CSV",help="accession-to-taxonomy CSV")
     s.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once database directory")
     s.add_argument("--separate-files",action="store_true",help="retain individual DNA2bit sketch files")
-    for name,text in (("annotate","annotate SAGs only"),("assemble","annotate and run Stage 3A plus Stage 3B")):
-        q=subs.add_parser(name,help=text); add_inputs(q,True)
-        q.add_argument("-d","--database",required=True,metavar="DIR",help="packed Microsags DNA2bit database")
-        q.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once result directory")
-        q.add_argument("-t","--threads",type=int,default=os.cpu_count() or 1,metavar="INT",help="worker limit (default: detected CPUs)")
-        if name=="assemble":
-            g=q.add_argument_group("Stage 3B dependencies")
-            g.add_argument("--checkm2",metavar="PATH",help="CheckM2 executable (default: PATH)")
-            g.add_argument("--checkm2-database",metavar="FILE",help="CheckM2 DIAMOND database (or CHECKM2DB)")
-            g.add_argument("--gtdbtk",metavar="PATH",help="GTDB-Tk executable (default: PATH)")
-            g.add_argument("--gtdbtk-data",metavar="DIR",help="GTDB-Tk data root (or GTDBTK_DATA_PATH)")
+    q=subs.add_parser("annotate",help="quality-control reads and annotate SAGs with DNA2bit")
+    add_inputs(q,True)
+    q.add_argument("-d","--database",required=True,metavar="DIR",help="packed Microsags DNA2bit database")
+    q.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once annotation directory")
+    q.add_argument("-t","--threads",type=int,default=os.cpu_count() or 1,metavar="INT",help="worker limit (default: detected CPUs)")
+
+    q=subs.add_parser("assemble",help="assemble per-SAG contigs using prior annotations")
+    add_inputs(q,False)
+    q.add_argument("-i","--input-type",choices=("contigs",),default="contigs",
+                   help="assembly accepts per-SAG FASTA contigs only")
+    q.add_argument("-a","--annotations",required=True,metavar="DIR",help="completed annotation-mode output directory")
+    q.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once assembly directory")
+    q.add_argument("-t","--threads",type=int,default=os.cpu_count() or 1,metavar="INT",help="worker limit (default: detected CPUs)")
+    g=q.add_argument_group("Stage 3B dependencies")
+    g.add_argument("--checkm2",metavar="PATH",help="CheckM2 executable (default: PATH)")
+    g.add_argument("--checkm2-database",metavar="FILE",help="CheckM2 DIAMOND database (or CHECKM2DB)")
+    g.add_argument("--gtdbtk",metavar="PATH",help="GTDB-Tk executable (default: PATH)")
+    g.add_argument("--gtdbtk-data",metavar="DIR",help="GTDB-Tk data root (or GTDBTK_DATA_PATH)")
+    q.add_argument("--leiden-resolution",type=float,metavar="FLOAT",
+                   help="override Stage 3B Leiden resolution (default: frozen sweep)")
     return p
 
 def main():
     try:
         args=make_parser().parse_args()
         if getattr(args,"threads",1)<1: raise Error("--threads must be positive")
+        if getattr(args,"leiden_resolution",None) is not None and args.leiden_resolution<=0:
+            raise Error("--leiden-resolution must be greater than zero")
         sketch(args) if args.command=="sketch" else annotate_assemble(args)
         return 0
     except (Error,subprocess.CalledProcessError) as e:

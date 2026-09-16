@@ -54,7 +54,7 @@ struct Sag {
 };
 
 struct Config {
-  fs::path manifest, out;
+  fs::path manifest, out, annotations;
   fs::path fastp = "fastp";
   fs::path spades = "spades.py";
   fs::path dna_tax = environment_path("MICROSAGS_DNA_TAX");
@@ -419,6 +419,7 @@ static Config parse(int argc, char** argv) {
     else if (option == "--dna-packed-db") config.dna_packed_db = value();
     else if (option == "--subass") config.subass = value();
     else if (option == "--flye-root") config.flye_root = value();
+    else if (option == "--annotations") config.annotations = value();
     else if (option == "--dry-run") config.dry = true;
     else if (option == "--resume") config.resume = true;
     else if (option == "--stop-after") {
@@ -439,6 +440,7 @@ static Config parse(int argc, char** argv) {
                 << "  --dna-search-engine packed --dna-packed-db INDEX_DIR\n\n"
                 << "Workflow endpoint:\n"
                 << "  --stop-after annotation   write DNA2bit labels/pending files and skip Stage 3A\n\n"
+                << "  --annotations DIR        use a completed annotation run for contig-only Stage 3A\n\n"
                 << "Portable dependency paths:\n"
                 << "  --fastp PATH --spades PATH --subass PATH --flye-root PREFIX\n"
                 << "  MICROSAGS_DNA_TAX, MICROSAGS_DNA_PACKED_DB and MICROSAGS_FLYE_ROOT\n"
@@ -453,11 +455,14 @@ static Config parse(int argc, char** argv) {
   if (config.dna_search_engine != "packed") {
     throw std::runtime_error("embedded package supports only --dna-search-engine packed");
   }
-  if (config.dna_search_engine == "packed" && config.dna_packed_db.empty()) {
+  if (config.annotations.empty() && config.dna_search_engine == "packed" && config.dna_packed_db.empty()) {
     throw std::runtime_error("packed search requires --dna-packed-db or MICROSAGS_DNA_PACKED_DB");
   }
-  if (config.dna_tax.empty()) {
+  if (config.annotations.empty() && config.dna_tax.empty()) {
     throw std::runtime_error("taxonomy requires --dna-tax or MICROSAGS_DNA_TAX");
+  }
+  if (!config.annotations.empty() && config.stop_after_annotation) {
+    throw std::runtime_error("--annotations and --stop-after annotation are mutually exclusive");
   }
   if (!config.stop_after_annotation && config.flye_root.empty()) {
     throw std::runtime_error("Flye runtime requires --flye-root, MICROSAGS_FLYE_ROOT, or an active Conda environment");
@@ -680,18 +685,30 @@ int main(int argc, char** argv) try {
     return std::chrono::duration<double>(end - begin).count();
   };
   Config config = parse(argc, argv);
-  require_file(config.dna_tax, "taxonomy table");
-  if (config.dna_search_engine != "packed") {
-    throw std::runtime_error("embedded package supports only --dna-search-engine packed");
+  if (config.annotations.empty()) {
+    require_file(config.dna_tax, "taxonomy table");
+    if (config.dna_search_engine != "packed") {
+      throw std::runtime_error("embedded package supports only --dna-search-engine packed");
+    }
+    require_file(config.dna_packed_db / "COMPLETE.json", "packed dna2bit database receipt");
+    std::error_code packed_error;
+    config.dna_packed_db = fs::weakly_canonical(config.dna_packed_db, packed_error);
+    if (packed_error) throw std::runtime_error("cannot canonicalize packed dna2bit database");
+  } else {
+    require_file(config.annotations / "02_dna2bit" / "labels.tsv", "annotation labels");
+    require_file(config.annotations / "03B_unclassified_pending.tsv", "annotation pending SAG list");
   }
-  require_file(config.dna_packed_db / "COMPLETE.json", "packed dna2bit database receipt");
-  std::error_code packed_error;
-  config.dna_packed_db = fs::weakly_canonical(config.dna_packed_db, packed_error);
-  if (packed_error) throw std::runtime_error("cannot canonicalize packed dna2bit database");
   if (!config.stop_after_annotation) {
     config.subass = resolve_program(config.subass, argv[0], "C++ subassemble");
   }
   auto sags = read_manifest(config.manifest);
+  if (!config.annotations.empty()) {
+    for (const auto& sag : sags) {
+      if (sag.input_kind != InputKind::contigs) {
+        throw std::runtime_error("--annotations assembly mode accepts only per-SAG FASTA contigs");
+      }
+    }
+  }
   fs::create_directories(config.out);
 
   std::size_t read_inputs = 0;
@@ -716,18 +733,26 @@ int main(int argc, char** argv) try {
         qc += " --thread " + std::to_string(std::min(config.threads, 16)) + " --json " +
               q(directory / "fastp.json") + " --html " + q(directory / "fastp.html");
         run(qc, directory / "FASTP.PASS", config.dry);
-        std::string spades = q(config.spades) + " --sc --careful ";
-        spades += sag.input_kind == InputKind::paired_reads
-                      ? "-1 " + q(sag.clean_r1) + " -2 " + q(sag.clean_r2)
-                      : "-s " + q(sag.clean_r1);
-        spades += " -o " + q(directory / "spades") + " -t " + std::to_string(config.threads) +
-                  " -m " + std::to_string(config.memory_gb);
-        run(spades, stage_pass, config.dry);
+        if (config.stop_after_annotation) {
+          if (!config.dry) {
+            std::ofstream(stage_pass) << "PASS\ninput_type=" << input_kind_name(sag.input_kind)
+                                      << "\ncompleted=fastp\nskipped=SPAdes\n";
+          }
+        } else {
+          std::string spades = q(config.spades) + " --sc --careful ";
+          spades += sag.input_kind == InputKind::paired_reads
+                        ? "-1 " + q(sag.clean_r1) + " -2 " + q(sag.clean_r2)
+                        : "-s " + q(sag.clean_r1);
+          spades += " -o " + q(directory / "spades") + " -t " + std::to_string(config.threads) +
+                    " -m " + std::to_string(config.memory_gb);
+          run(spades, stage_pass, config.dry);
+        }
       }
-      if (!config.dry && !fs::exists(sag.assembly)) {
+      if (!config.stop_after_annotation && !config.dry && !fs::exists(sag.assembly)) {
         require_file(spades_assembly, "SPAdes scaffolds");
         fs::create_symlink(fs::absolute(spades_assembly), sag.assembly);
       }
+      if (config.stop_after_annotation) sag.assembly_bp_known = true;
     } else {
       ++contig_inputs;
       const auto stage_pass = directory / "STAGE1.PASS";
@@ -762,7 +787,8 @@ int main(int argc, char** argv) try {
     std::ofstream excluded(excluded_path);
     excluded << "sag_id\tassembly_fasta\ttotal_bp\treason\n";
     for (auto& sag : sags) {
-      if (sag.assembly_bp < 1000) {
+      const bool read_annotation = config.stop_after_annotation && sag.input_kind != InputKind::contigs;
+      if (!read_annotation && sag.assembly_bp < 1000) {
         excluded << sag.id << '\t' << sag.assembly.string() << '\t' << sag.assembly_bp
                  << "\ttotal_assembly_bp_lt_1000\n";
       } else {
@@ -774,12 +800,14 @@ int main(int argc, char** argv) try {
     std::ofstream audit(config.out / "INPUT_AUDIT.tsv");
     audit << "sag_id\tdetected_input_type\tsource_1\tsource_2\tstart_stage\tskipped_stages\tassembly_fasta\tassembly_bp\teligible\n";
     for (const auto& sag : sags) {
+      const bool read_annotation = config.stop_after_annotation && sag.input_kind != InputKind::contigs;
       audit << sag.id << '\t' << input_kind_name(sag.input_kind) << '\t' << sag.source1.string() << '\t'
             << (sag.source2.empty() ? "NA" : sag.source2.string()) << '\t'
             << (sag.input_kind != InputKind::contigs ? "fastp" : "assembly_length_gate") << '\t'
             << (sag.input_kind != InputKind::contigs ? "none" : "fastp,SPAdes") << '\t'
-            << sag.assembly.string() << '\t' << sag.assembly_bp << '\t'
-            << (sag.assembly_bp >= 1000 ? "yes" : "no") << '\n';
+            << (read_annotation ? "NA" : sag.assembly.string()) << '\t'
+            << (read_annotation ? 0 : sag.assembly_bp) << '\t'
+            << (read_annotation || sag.assembly_bp >= 1000 ? "yes" : "no") << '\n';
     }
 
     // This is the one-pass, auditable FASTA-stat sidecar for Stage 3B.  It is
@@ -794,7 +822,8 @@ int main(int argc, char** argv) try {
                                 ? 0.0
                                 : 100.0 * static_cast<double>(sag.assembly_gc) /
                                       static_cast<double>(sag.assembly_bp);
-      stats << sag.id << '\t' << sag.assembly.string() << '\t' << sag.assembly_bp << '\t'
+      const bool read_annotation = config.stop_after_annotation && sag.input_kind != InputKind::contigs;
+      stats << sag.id << '\t' << (read_annotation ? "NA" : sag.assembly.string()) << '\t' << sag.assembly_bp << '\t'
             << sag.assembly_max_contig << '\t' << gc_pct << '\t' << sag.assembly_gc << '\t'
             << sag.assembly_acgt << '\n';
     }
@@ -803,6 +832,16 @@ int main(int argc, char** argv) try {
   }
 
   const double preflight_length_seconds = elapsed_seconds(total_started, SteadyClock::now());
+  double sketch_seconds = 0.0;
+  double search_seconds = 0.0;
+  std::map<std::string, std::vector<Sag*>> groups;
+  std::unordered_set<std::string> labeled;
+  labeled.reserve(eligible.size());
+  fs::create_directories(config.out / "02_dna2bit");
+  std::ofstream labels(config.out / "02_dna2bit" / "labels.tsv");
+  labels << "sag_id\treference\ttaxonomy\tspecies_group\n";
+
+  if (config.annotations.empty()) {
   const auto sketch_started = SteadyClock::now();
 
   const auto bit_directory = config.out / "02_dna2bit" / "bits";
@@ -881,7 +920,7 @@ int main(int argc, char** argv) try {
     }
   }
 
-  const double sketch_seconds = elapsed_seconds(sketch_started, SteadyClock::now());
+  sketch_seconds = elapsed_seconds(sketch_started, SteadyClock::now());
   const auto search_started = SteadyClock::now();
 
   const auto result = config.out / "02_dna2bit" / "search_result.csv";
@@ -913,14 +952,9 @@ int main(int argc, char** argv) try {
     by_bit[fs::path(sag->bit_search_token).filename().generic_string()] = sag;
     by_bit[fs::weakly_canonical(sag->bit).string()] = sag;
   }
-  std::map<std::string, std::vector<Sag*>> groups;
-  std::unordered_set<std::string> labeled;
-  labeled.reserve(eligible.size());
   std::ifstream result_file(result);
   if (!result_file) throw std::runtime_error("cannot read dna2bit search result: " + result.string());
   std::string line;
-  std::ofstream labels(config.out / "02_dna2bit" / "labels.tsv");
-  labels << "sag_id\treference\ttaxonomy\tspecies_group\n";
   while (std::getline(result_file, line)) {
     const auto columns = split(line, ',');
     if (columns.size() < 3) continue;
@@ -940,19 +974,64 @@ int main(int argc, char** argv) try {
     labeled.insert(found->second->id);
     labels << found->second->id << '\t' << columns[1] << '\t' << taxonomy << '\t' << key << '\n';
   }
+  search_seconds = elapsed_seconds(search_started, SteadyClock::now());
+  } else {
+    std::unordered_map<std::string, Sag*> by_id;
+    for (auto& sag : sags) by_id.emplace(sag.id, &sag);
+    std::unordered_set<std::string> eligible_ids;
+    for (auto* sag : eligible) eligible_ids.insert(sag->id);
+    std::set<std::string> annotation_ids;
+    std::ifstream imported(config.annotations / "02_dna2bit" / "labels.tsv");
+    std::string line;
+    bool first = true;
+    while (std::getline(imported, line)) {
+      if (!line.empty() && line.back() == '\r') line.pop_back();
+      if (line.empty()) continue;
+      const auto columns = split(line, '\t');
+      if (first && !columns.empty() && lower(columns[0]) == "sag_id") { first = false; continue; }
+      first = false;
+      if (columns.size() < 4) throw std::runtime_error("annotation labels row has fewer than four columns");
+      const std::string id = clean_id(columns[0]);
+      if (!annotation_ids.insert(id).second) throw std::runtime_error("duplicate SAG in annotation labels: " + id);
+      auto found = by_id.find(id);
+      if (found == by_id.end()) throw std::runtime_error("annotated SAG has no matching contig input: " + id);
+      if (eligible_ids.count(id)) {
+        groups[columns[3]].push_back(found->second);
+        labeled.insert(id);
+        labels << id << '\t' << columns[1] << '\t' << columns[2] << '\t' << columns[3] << '\n';
+      }
+    }
+    std::ifstream imported_pending(config.annotations / "03B_unclassified_pending.tsv");
+    first = true;
+    while (std::getline(imported_pending, line)) {
+      if (!line.empty() && line.back() == '\r') line.pop_back();
+      if (line.empty()) continue;
+      const auto columns = split(line, '\t');
+      if (first && !columns.empty() && lower(columns[0]) == "sag_id") { first = false; continue; }
+      first = false;
+      if (columns.empty()) throw std::runtime_error("empty annotation pending row");
+      const std::string id = clean_id(columns[0]);
+      if (!annotation_ids.insert(id).second) throw std::runtime_error("SAG appears more than once across annotation outputs: " + id);
+      if (!by_id.count(id)) throw std::runtime_error("unclassified SAG has no matching contig input: " + id);
+    }
+    if (annotation_ids.size() != by_id.size()) {
+      throw std::runtime_error("contig SAG set does not exactly match annotation labels plus unclassified SAGs");
+    }
+  }
 
   std::ofstream pending(config.out / "03B_unclassified_pending.tsv");
   pending << "sag_id\tassembly_fasta\treason\n";
   for (auto* sag : eligible) {
     if (!labeled.count(sag->id)) {
-      pending << sag->id << '\t' << sag->assembly.string() << "\tdna2bit_rejected_or_no_hit\n";
+      const bool read_annotation = config.stop_after_annotation && sag->input_kind != InputKind::contigs;
+      pending << sag->id << '\t' << (read_annotation ? "NA" : sag->assembly.string())
+              << "\tdna2bit_rejected_or_no_hit\n";
     }
   }
 
   labels.close();
   pending.close();
 
-  const double search_seconds = elapsed_seconds(search_started, SteadyClock::now());
   if (config.stop_after_annotation) {
     const auto scientific_finished = SteadyClock::now();
     const double total_seconds = elapsed_seconds(total_started, scientific_finished);
