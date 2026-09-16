@@ -82,29 +82,18 @@ FASTQ and FASTA filename extensions:
 microsags annotate SAGs/ -d database -o annotation_output
 ```
 
-Main outputs:
+The annotation result is written to
+`annotation_output/02_dna2bit/labels.tsv`. The two principal columns are the
+SAG identifier and its accepted species label.
 
-- `02_dna2bit/search_result.csv`: raw DNA2bit search results;
-- `02_dna2bit/labels.tsv`: accepted species annotations;
-- `03B_unclassified_pending.tsv`: rejected or no-hit SAGs;
-- `COMPLETE.json`: completion status.
-
-Example output:
+Example result (illustrative species names):
 
 ```text
-annotation_output/
-├── 01_assembly/
-│   ├── SAG_0001/
-│   ├── SAG_0002/
-│   └── ...
-├── 02_dna2bit/
-│   ├── bits/
-│   ├── search_result.csv
-│   └── labels.tsv
-├── 03B_unclassified_pending.tsv
-├── INPUT_AUDIT.tsv
-├── TIMING.tsv
-└── COMPLETE.json
+sag_id      species
+SAG_0001    Example_species_A
+SAG_0002    Example_species_B
+SAG_0003    Example_species_C
+...         ...
 ```
 
 ## Assembly mode
