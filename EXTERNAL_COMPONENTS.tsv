@@ -2,7 +2,6 @@ component	role	status
 DNA2bit_sketch	teacher-compatible_k17_bit_sketch	IN_PROCESS_SOURCE
 DNA2bit_packed_search	teacher-compatible_XOR_popcount_search	IN_PROCESS_SOURCE
 fastp	read_QC	external_command_for_reads_only
-SPAdes	read_single_cell_assembly	external_command_for_reads_only
 cpp-subass	C++_subassembly_driver	package_binary
 Flye_modules	assembly_backend	external_environment
 CheckM2	final_quality_evaluation	external_command

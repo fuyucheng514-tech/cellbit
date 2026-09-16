@@ -160,12 +160,6 @@ def rows(args):
     if len({r[0] for r in out}) != len(out): raise Error("duplicate paired-read SAG IDs")
     return ["sag_id", "r1", "r2"], out
 
-def memory_gb():
-    try:
-        line = next(x for x in Path("/proc/meminfo").read_text().splitlines() if x.startswith("MemAvailable:"))
-        return max(1, int(int(line.split()[1]) / 1048576 * .8))
-    except Exception: return 64
-
 def run(cmd, env=None):
     print("+ " + " ".join(map(str, cmd)), file=sys.stderr, flush=True)
     subprocess.run(list(map(str, cmd)), check=True, env=env)
@@ -186,7 +180,7 @@ def pipeline(args, manifest, annotation):
     out = Path(args.output).expanduser().resolve()
     if out.exists(): raise Error(f"write-once output exists: {out}")
     cmd = [exe("dna2bit-sag-pipeline"), "--manifest", manifest, "--out", out,
-           "--threads", args.threads, "--memory-gb", memory_gb()]
+           "--threads", args.threads]
     if annotation:
         db = Path(args.database).expanduser().resolve()
         for name in ("references.pack", "references.tsv", "genome_taxonomy.csv"): file(db/name)

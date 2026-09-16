@@ -56,14 +56,12 @@ struct Sag {
 struct Config {
   fs::path manifest, out, annotations;
   fs::path fastp = "fastp";
-  fs::path spades = "spades.py";
   fs::path dna_tax = environment_path("MICROSAGS_DNA_TAX");
   std::string dna_search_engine = "packed";
   fs::path dna_packed_db = environment_path("MICROSAGS_DNA_PACKED_DB");
   fs::path subass = "cpp-subass";
   fs::path flye_root = default_flye_root();
   int threads = 24;
-  int memory_gb = 128;
   bool dry = false;
   bool resume = false;
   bool stop_after_annotation = false;
@@ -411,9 +409,7 @@ static Config parse(int argc, char** argv) {
     if (option == "--manifest") config.manifest = value();
     else if (option == "--out") config.out = value();
     else if (option == "--threads") config.threads = std::stoi(value());
-    else if (option == "--memory-gb") config.memory_gb = std::stoi(value());
     else if (option == "--fastp") config.fastp = value();
-    else if (option == "--spades") config.spades = value();
     else if (option == "--dna-tax") config.dna_tax = value();
     else if (option == "--dna-search-engine") config.dna_search_engine = value();
     else if (option == "--dna-packed-db") config.dna_packed_db = value();
@@ -432,17 +428,17 @@ static Config parse(int argc, char** argv) {
     else if (option == "--help" || option == "-h") {
       std::cout << "dna2bit-sag-pipeline --manifest SAGs.tsv --out DIR [options]\n\n"
                 << "Input is detected from file contents, not filename extensions:\n"
-                << "  SAG_ID<TAB>R1<TAB>R2       paired FASTQ; run fastp -> SPAdes -> >=1000-bp gate\n"
-                << "  SAG_ID<TAB>reads.fastq     singleton FASTQ; run fastp -> SPAdes -s -> >=1000-bp gate\n"
-                << "  SAG_ID<TAB>contigs.fasta   FASTA; skip fastp/SPAdes -> >=1000-bp gate\n"
+                << "  SAG_ID<TAB>R1<TAB>R2       Annotation: fastp, then DNA2bit on cleaned reads\n"
+                << "  SAG_ID<TAB>reads.fastq     Annotation: fastp, then DNA2bit on cleaned reads\n"
+                << "  SAG_ID<TAB>contigs.fasta   Annotation or Assembly input\n"
                 << "A matching optional header is accepted.\n\n"
                 << "Search engine is embedded teacher-compatible packed search:\n"
                 << "  --dna-search-engine packed --dna-packed-db INDEX_DIR\n\n"
                 << "Workflow endpoint:\n"
                 << "  --stop-after annotation   write DNA2bit labels/pending files and skip Stage 3A\n\n"
-                << "  --annotations DIR        use a completed annotation run for contig-only Stage 3A\n\n"
+                << "  --annotations DIR        contig-only Assembly: import Annotation, then Stage 3A+3B\n\n"
                 << "Portable dependency paths:\n"
-                << "  --fastp PATH --spades PATH --subass PATH --flye-root PREFIX\n"
+                << "  --fastp PATH --subass PATH --flye-root PREFIX\n"
                 << "  MICROSAGS_DNA_TAX, MICROSAGS_DNA_PACKED_DB and MICROSAGS_FLYE_ROOT\n"
                 << "  may be used instead of repeating data/runtime paths.\n";
       std::exit(0);
@@ -451,7 +447,7 @@ static Config parse(int argc, char** argv) {
     }
   }
   if (config.manifest.empty() || config.out.empty()) throw std::runtime_error("required: --manifest and --out");
-  if (config.threads < 1 || config.memory_gb < 1) throw std::runtime_error("threads and memory-gb must be positive");
+  if (config.threads < 1) throw std::runtime_error("threads must be positive");
   if (config.dna_search_engine != "packed") {
     throw std::runtime_error("embedded package supports only --dna-search-engine packed");
   }
@@ -463,6 +459,9 @@ static Config parse(int argc, char** argv) {
   }
   if (!config.annotations.empty() && config.stop_after_annotation) {
     throw std::runtime_error("--annotations and --stop-after annotation are mutually exclusive");
+  }
+  if (config.annotations.empty() && !config.stop_after_annotation) {
+    throw std::runtime_error("select a workflow: --stop-after annotation or --annotations DIR");
   }
   if (!config.stop_after_annotation && config.flye_root.empty()) {
     throw std::runtime_error("Flye runtime requires --flye-root, MICROSAGS_FLYE_ROOT, or an active Conda environment");
@@ -726,33 +725,18 @@ int main(int argc, char** argv) try {
       sag.clean_r1 = clean / "R1.fastq.gz";
       if (sag.input_kind == InputKind::paired_reads) sag.clean_r2 = clean / "R2.fastq.gz";
       const auto stage_pass = directory / "STAGE1.PASS";
-      const auto spades_assembly = directory / "spades" / "scaffolds.fasta";
       if (!(config.resume && fs::exists(stage_pass))) {
         std::string qc = q(config.fastp) + " -i " + q(sag.source1) + " -o " + q(sag.clean_r1);
         if (sag.input_kind == InputKind::paired_reads) qc += " -I " + q(sag.source2) + " -O " + q(sag.clean_r2);
         qc += " --thread " + std::to_string(std::min(config.threads, 16)) + " --json " +
               q(directory / "fastp.json") + " --html " + q(directory / "fastp.html");
         run(qc, directory / "FASTP.PASS", config.dry);
-        if (config.stop_after_annotation) {
-          if (!config.dry) {
-            std::ofstream(stage_pass) << "PASS\ninput_type=" << input_kind_name(sag.input_kind)
-                                      << "\ncompleted=fastp\nskipped=SPAdes\n";
-          }
-        } else {
-          std::string spades = q(config.spades) + " --sc --careful ";
-          spades += sag.input_kind == InputKind::paired_reads
-                        ? "-1 " + q(sag.clean_r1) + " -2 " + q(sag.clean_r2)
-                        : "-s " + q(sag.clean_r1);
-          spades += " -o " + q(directory / "spades") + " -t " + std::to_string(config.threads) +
-                    " -m " + std::to_string(config.memory_gb);
-          run(spades, stage_pass, config.dry);
+        if (!config.dry) {
+          std::ofstream(stage_pass) << "PASS\ninput_type=" << input_kind_name(sag.input_kind)
+                                    << "\ncompleted=fastp\nnext=DNA2bit\n";
         }
       }
-      if (!config.stop_after_annotation && !config.dry && !fs::exists(sag.assembly)) {
-        require_file(spades_assembly, "SPAdes scaffolds");
-        fs::create_symlink(fs::absolute(spades_assembly), sag.assembly);
-      }
-      if (config.stop_after_annotation) sag.assembly_bp_known = true;
+      sag.assembly_bp_known = true;
     } else {
       ++contig_inputs;
       const auto stage_pass = directory / "STAGE1.PASS";
@@ -770,10 +754,10 @@ int main(int argc, char** argv) try {
         require_file(sag.assembly, "auto-routed contig FASTA");
         if (!fs::exists(stage_pass)) {
           std::ofstream(stage_pass) << "PASS\ninput_type=contigs\nsource=" << sag.source1.string()
-                                    << "\nskipped=fastp,SPAdes\nstart_stage=assembly_length_gate\n";
+                                    << "\nskipped=fastp\nstart_stage=assembly_length_gate\n";
         }
       }
-      std::cerr << "+ [auto-route] " << sag.id << ": FASTA contigs; skip fastp and SPAdes\n";
+      std::cerr << "+ [auto-route] " << sag.id << ": FASTA contigs; skip fastp\n";
     }
   }
 
@@ -804,7 +788,7 @@ int main(int argc, char** argv) try {
       audit << sag.id << '\t' << input_kind_name(sag.input_kind) << '\t' << sag.source1.string() << '\t'
             << (sag.source2.empty() ? "NA" : sag.source2.string()) << '\t'
             << (sag.input_kind != InputKind::contigs ? "fastp" : "assembly_length_gate") << '\t'
-            << (sag.input_kind != InputKind::contigs ? "none" : "fastp,SPAdes") << '\t'
+            << (sag.input_kind != InputKind::contigs ? "none" : "fastp") << '\t'
             << (read_annotation ? "NA" : sag.assembly.string()) << '\t'
             << (read_annotation ? 0 : sag.assembly_bp) << '\t'
             << (read_annotation || sag.assembly_bp >= 1000 ? "yes" : "no") << '\n';
