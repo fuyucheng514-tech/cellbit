@@ -77,13 +77,12 @@ SPAdes、Flye、BLAST+、python-igraph 和 leidenalg。完整的 pixi、conda �
 ## 运行
 
 ```bash
-pixi run microsags --manifest SAGs.tsv --out output \
-  --dna-tax /path/to/genome_taxonomy_1.csv \
-  --dna-packed-db /path/to/packed-index \
-  --threads 48 --memory-gb 256
+pixi run microsags annotate SAGs/*.fna \
+  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
+  --output annotation_output --threads 48
 ```
 
-可先加 `--dry-run` 查看命令；意外中断后加 `--resume`，只复用带PASS收据的阶段。
+文件太多时可用 `--file-list SAG_paths.txt`，每行一个 FASTA 路径。
 
 ## 输出
 

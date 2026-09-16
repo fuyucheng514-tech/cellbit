@@ -1,4 +1,190 @@
-#!/usr/bin/env sh
-set -eu
-bindir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-exec "$bindir/dna2bit-sag-pipeline" "$@"
+#!/usr/bin/env python3
+"""Microsags public CLI (v0.2.0)."""
+from __future__ import annotations
+import argparse, csv, os, re, shutil, subprocess, sys, tempfile
+from pathlib import Path
+
+VERSION = "0.2.0"
+FASTA = (".fasta", ".fna", ".fa", ".fas")
+FASTQ = (".fastq", ".fq")
+
+class Error(RuntimeError): pass
+
+def exe(name):
+    local = Path(__file__).resolve().parent / name
+    found = str(local) if local.is_file() and os.access(local, os.X_OK) else shutil.which(name)
+    if not found: raise Error(f"required executable not found: {name}")
+    return found
+
+def file(value):
+    p = Path(value).expanduser().resolve()
+    if not p.is_file() or not p.stat().st_size: raise Error(f"missing or empty file: {p}")
+    return p
+
+def stem(path, suffixes):
+    name = path.name[:-3] if path.name.lower().endswith(".gz") else path.name
+    for suffix in suffixes:
+        if name.lower().endswith(suffix): return name[:-len(suffix)]
+    raise Error(f"unsupported sequence suffix: {path}")
+
+def sag_id(path):
+    value = stem(path, FASTA)
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", value): raise Error(f"unsafe SAG filename: {path.name}")
+    return value
+
+def list_paths(value):
+    source = file(value); out = []
+    for n, line in enumerate(source.read_text(encoding="utf-8-sig").splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#"): continue
+        p = Path(line).expanduser(); p = p if p.is_absolute() else source.parent / p
+        try: out.append(file(p))
+        except Error as e: raise Error(f"{source}:{n}: {e}") from e
+    if not out: raise Error(f"empty file list: {source}")
+    return out
+
+def fasta_paths(args):
+    if args.file_list and args.inputs: raise Error("FASTA arguments and --file-list are mutually exclusive")
+    paths = list_paths(args.file_list) if args.file_list else [file(p) for p in args.inputs]
+    if not paths: raise Error("provide FASTA files or -l/--file-list")
+    ids = [sag_id(p) for p in paths]
+    if len(ids) != len(set(ids)): raise Error("duplicate SAG IDs after filename normalization")
+    if len(paths) != len(set(paths)): raise Error("duplicate FASTA path")
+    return paths
+
+def read_id(path, mate):
+    value = stem(path, FASTQ)
+    value = re.sub(rf"([_.-])?R?{mate}(?:_001)?$", "", value, flags=re.I)
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", value): raise Error(f"cannot derive SAG ID: {path.name}")
+    return value
+
+def rows(args):
+    read_mode = any((args.reads1, args.reads2, args.r1_list, args.r2_list))
+    if not read_mode:
+        ps = fasta_paths(args); return ["sag_id", "assembly_fasta"], [[sag_id(p), str(p)] for p in ps]
+    if args.inputs or args.file_list: raise Error("FASTA inputs cannot be mixed with reads")
+    if args.reads1 or args.reads2:
+        if not (args.reads1 and args.reads2) or args.r1_list or args.r2_list: raise Error("use -1 and -2 together")
+        left, right = [file(args.reads1)], [file(args.reads2)]
+    else:
+        if not (args.r1_list and args.r2_list): raise Error("use --r1-list and --r2-list together")
+        left, right = list_paths(args.r1_list), list_paths(args.r2_list)
+    if len(left) != len(right): raise Error("R1/R2 lists have different lengths")
+    out = []
+    for a, b in zip(left, right):
+        ia, ib = read_id(a, 1), read_id(b, 2)
+        if ia != ib: raise Error(f"read pair IDs differ: {a.name}, {b.name}")
+        out.append([ia, str(a), str(b)])
+    if len({r[0] for r in out}) != len(out): raise Error("duplicate paired-read SAG IDs")
+    return ["sag_id", "r1", "r2"], out
+
+def memory_gb():
+    try:
+        line = next(x for x in Path("/proc/meminfo").read_text().splitlines() if x.startswith("MemAvailable:"))
+        return max(1, int(int(line.split()[1]) / 1048576 * .8))
+    except Exception: return 64
+
+def run(cmd, env=None):
+    print("+ " + " ".join(map(str, cmd)), file=sys.stderr, flush=True)
+    subprocess.run(list(map(str, cmd)), check=True, env=env)
+
+def helper(name):
+    here = Path(__file__).resolve()
+    candidates = [here.parent.parent / "libexec/microsags" / name, here.parent / name,
+                  here.parent.parent / "python" / name]
+    for p in candidates:
+        if p.is_file(): return p
+    raise Error(f"Stage 3B helper missing: {name}")
+
+def pipeline(args, manifest, annotation):
+    db = Path(args.database).expanduser().resolve()
+    for name in ("references.pack", "references.tsv", "genome_taxonomy.csv"): file(db/name)
+    out = Path(args.output).expanduser().resolve()
+    if out.exists(): raise Error(f"write-once output exists: {out}")
+    cmd = [exe("dna2bit-sag-pipeline"), "--manifest", manifest, "--out", out,
+           "--threads", args.threads, "--memory-gb", memory_gb(), "--dna-tax", db/"genome_taxonomy.csv",
+           "--dna-search-engine", "packed", "--dna-packed-db", db]
+    cmd += ["--stop-after", "annotation"] if annotation else ["--subass", exe("cpp-subass")]
+    run(cmd)
+
+def stage3b(args):
+    root = Path(args.output).expanduser().resolve(); pending = file(root/"03B_unclassified_pending.tsv")
+    if sum(1 for _ in pending.open(encoding="utf-8")) <= 1:
+        print("Stage 3B: no negative SAGs.", file=sys.stderr); return
+    checkm2, gtdbtk = args.checkm2 or shutil.which("checkm2"), args.gtdbtk or shutil.which("gtdbtk")
+    cdb = args.checkm2_database or os.getenv("CHECKM2DB"); gdb = args.gtdbtk_data or os.getenv("GTDBTK_DATA_PATH")
+    if not checkm2 or not gtdbtk: raise Error("assemble requires CheckM2 and GTDB-Tk; install them or pass their paths")
+    if not cdb or not gdb: raise Error("assemble requires CheckM2 and GTDB-Tk database paths")
+    base = root/"stage3b"; view, stats, upstream, evidence, result = [base/x for x in ("input","stats","upstream","evidence","result")]
+    run([sys.executable, helper("prepare_stage3b_upstream_input.py"), "--pending", pending, "--out-dir", view])
+    run([sys.executable, helper("prepare_stage3b_pending_stats.py"), "--pending", pending, "--stats", root/"STAGE3B_FASTA_STATS.tsv", "--out-dir", stats])
+    upstream.mkdir(parents=True)
+    run([checkm2,"predict","--input",view/"input_fna","--output-directory",upstream/"checkm2","--database_path",file(cdb),"--extension","fna","--threads",args.threads,"--force"])
+    env=os.environ.copy(); env["GTDBTK_DATA_PATH"]=str(Path(gdb).resolve())
+    run([gtdbtk,"identify","--genome_dir",view/"input_fna","--out_dir",upstream/"gtdbtk","-x","fna","--cpus",args.threads,"--force","--write_single_copy_genes"], env)
+    run([sys.executable,helper("finalize_stage3b_upstream.py"),"--pending",pending,"--stats",stats/"STAGE3B_FASTA_STATS.tsv","--input-view",view,"--checkm2-report",upstream/"checkm2/quality_report.tsv","--identify-root",upstream/"gtdbtk","--out-dir",evidence])
+    run([exe("sag-stage3b-tractor"),"--manifest",pending,"--quality-manifest",evidence/"stage3b_quality.tsv","--marker-map",evidence/"bac120_marker_nt_map.tsv","--ani-engine",exe("gtdb-ani-af"),"--allow-experimental-ani-engine","--makeblastdb",exe("makeblastdb"),"--blastn",exe("blastn"),"--python",sys.executable,"--leiden-backend",helper("stage3b_signed_leiden.py"),"--subass",exe("cpp-subass"),"--flye-root",Path(exe("flye")).resolve().parent.parent,"--threads",args.threads,"--out",result])
+
+def annotate_assemble(args):
+    header, data = rows(args); parent=Path(args.output).expanduser().resolve().parent; parent.mkdir(parents=True,exist_ok=True)
+    with tempfile.NamedTemporaryFile("w",encoding="utf-8",newline="",suffix=".tsv",dir=parent,delete=False) as h:
+        manifest=Path(h.name); w=csv.writer(h,delimiter="\t",lineterminator="\n"); w.writerow(header); w.writerows(data)
+    try:
+        pipeline(args,manifest,args.command=="annotate")
+        if args.command=="assemble": stage3b(args)
+    finally: manifest.unlink(missing_ok=True)
+
+def sketch(args):
+    refs=fasta_paths(args); taxonomy=file(args.taxonomy); out=Path(args.output).expanduser().resolve()
+    if out.exists(): raise Error(f"write-once output exists: {out}")
+    for ref in refs:
+        if not re.search(r"GC[AF]_\d+\.\d+",ref.name): raise Error(f"reference name lacks GCA/GCF accession: {ref.name}")
+    work=out.parent/f".{out.name}.sketch-incomplete-{os.getpid()}"; bits=work/"bits"; bits.mkdir(parents=True)
+    try:
+        for ref in refs: run([exe("dna2bit-embedded-sketch"),ref,bits/f"{ref.name}.k.17.l.55296.bit"])
+        run([exe("dna2bit-pack-builder"),"--database",str(bits)+os.sep,"--index",out,"--taxonomy",taxonomy,"--expected-row-bytes","6912"])
+        if args.separate_files: shutil.move(bits,out/"separate_bits")
+        shutil.rmtree(work)
+    except BaseException:
+        print(f"incomplete work retained: {work}",file=sys.stderr); raise
+
+def add_inputs(p, reads):
+    p.add_argument("inputs",nargs="*",metavar="FASTA",help="one FASTA per SAG; shell globs supported")
+    p.add_argument("-l","--file-list",metavar="FILE",help="one FASTA path per line")
+    if reads:
+        p.add_argument("-1","--reads1",metavar="FASTQ",help="R1 FASTQ for one unassembled SAG")
+        p.add_argument("-2","--reads2",metavar="FASTQ",help="R2 FASTQ for one unassembled SAG")
+        p.add_argument("--r1-list",metavar="FILE",help="one R1 path per line for batch reads")
+        p.add_argument("--r2-list",metavar="FILE",help="one R2 path per line for batch reads")
+
+def make_parser():
+    p=argparse.ArgumentParser(prog="microsags",description="Fast SAG annotation and deterministic Stage 3A/3B assembly")
+    p.add_argument("-V","--version",action="version",version=f"Microsags {VERSION}")
+    subs=p.add_subparsers(dest="command",required=True,metavar="COMMAND")
+    s=subs.add_parser("sketch",help="build a packed DNA2bit reference database"); add_inputs(s,False)
+    s.add_argument("-x","--taxonomy",required=True,metavar="CSV",help="accession-to-taxonomy CSV")
+    s.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once database directory")
+    s.add_argument("--separate-files",action="store_true",help="retain individual DNA2bit sketch files")
+    for name,text in (("annotate","annotate SAGs only"),("assemble","annotate and run Stage 3A plus Stage 3B")):
+        q=subs.add_parser(name,help=text); add_inputs(q,True)
+        q.add_argument("-d","--database",required=True,metavar="DIR",help="packed Microsags DNA2bit database")
+        q.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once result directory")
+        q.add_argument("-t","--threads",type=int,default=os.cpu_count() or 1,metavar="INT",help="worker limit (default: detected CPUs)")
+        if name=="assemble":
+            g=q.add_argument_group("Stage 3B dependencies")
+            g.add_argument("--checkm2",metavar="PATH",help="CheckM2 executable (default: PATH)")
+            g.add_argument("--checkm2-database",metavar="FILE",help="CheckM2 DIAMOND database (or CHECKM2DB)")
+            g.add_argument("--gtdbtk",metavar="PATH",help="GTDB-Tk executable (default: PATH)")
+            g.add_argument("--gtdbtk-data",metavar="DIR",help="GTDB-Tk data root (or GTDBTK_DATA_PATH)")
+    return p
+
+def main():
+    try:
+        args=make_parser().parse_args()
+        if getattr(args,"threads",1)<1: raise Error("--threads must be positive")
+        sketch(args) if args.command=="sketch" else annotate_assemble(args)
+        return 0
+    except (Error,subprocess.CalledProcessError) as e:
+        print(f"microsags: error: {e}",file=sys.stderr); return 2
+
+if __name__=="__main__": raise SystemExit(main())

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(dna2bit_sag_pipeline VERSION 0.1.0 LANGUAGES CXX)
+project(dna2bit_sag_pipeline VERSION 0.2.0 LANGUAGES CXX)
 
 set(HTS_ROOT "" CACHE PATH "Optional htslib/zlib installation prefix for bundled cpp-subass")
 if(HTS_ROOT)
@@ -120,6 +120,8 @@ if(BUILD_TESTING AND UNIX)
            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/gtdb_ani_af_rebind_taxonomy.sh
                         $<TARGET_FILE:gtdb-ani-af>)
   set_tests_properties(gtdb_ani_af_rebind_taxonomy PROPERTIES TIMEOUT 120)
+  add_test(NAME microsags_public_cli_inputs
+           COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_microsags_cli.py)
 endif()
 
 install(TARGETS dna2bit-sag-pipeline dna2bit-embedded-sketch sag-stage3b-tractor gtdb-ani-af dna2bit-packed
@@ -129,7 +131,11 @@ if(TARGET cpp-subass)
   install(TARGETS cpp-subass RUNTIME DESTINATION bin)
 endif()
 install(PROGRAMS tools/microsags DESTINATION bin)
-install(PROGRAMS python/stage3b_signed_leiden.py DESTINATION libexec/microsags)
+install(PROGRAMS python/stage3b_signed_leiden.py
+                 tools/prepare_stage3b_upstream_input.py
+                 tools/prepare_stage3b_pending_stats.py
+                 tools/finalize_stage3b_upstream.py
+        DESTINATION libexec/microsags)
 install(FILES config/paths.env.example requirements-stage3b.txt
         DESTINATION share/microsags)
 install(FILES README.md INSTALL.md README_STAGE3B.md README_GTD_ANI_AF.md

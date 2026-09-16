@@ -5,6 +5,8 @@ install/
 *.o
 *.a
 *.so
+__pycache__/
+*.py[cod]
 
 # Local configuration and credentials
 config/paths.env

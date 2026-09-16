@@ -20,12 +20,9 @@ project's pixi environment. Subsequent commands can be run with `pixi run`, for
 example:
 
 ```bash
-pixi run microsags \
-  --manifest examples/SAGs.example.tsv \
-  --out output \
-  --dna-tax /absolute/path/to/genome_taxonomy_1.csv \
-  --dna-packed-db /absolute/path/to/packed-index \
-  --threads 8 --memory-gb 64
+pixi run microsags annotate examples/SAGs/*.fna \
+  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
+  --output output --threads 8
 ```
 
 ## Install from the GitHub release

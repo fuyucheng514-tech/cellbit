@@ -32,14 +32,10 @@ Use this command when you only need a species label for each eligible SAG and
 do not want Microsags to construct Stage 3A bins:
 
 ```bash
-pixi run microsags \
-  --manifest SAGs.tsv \
-  --out annotation_output \
-  --dna-tax /data/GTDB232/genome_taxonomy_1.csv \
-  --dna-packed-db /data/GTDB232/dna2bit-packed-index \
-  --threads 32 \
-  --memory-gb 128 \
-  --stop-after annotation
+pixi run microsags annotate SAGs/*.fna \
+  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
+  --output annotation_output \
+  --threads 32
 ```
 
 The command accepts paired reads, existing contigs, or a mixed manifest. For
@@ -51,47 +47,27 @@ It stops after the original DNA2bit acceptance rule has produced:
 - `annotation_output/03B_unclassified_pending.tsv`: rejected/no-hit SAGs;
 - `annotation_output/COMPLETE.json`: annotation-only PASS receipt.
 
-## Command 2: annotation and Stage 3A
+## Command 2: annotation plus Stage 3A and Stage 3B
 
 ```bash
-pixi run microsags \
-  --manifest SAGs.tsv \
-  --out full_output \
-  --dna-tax /data/GTDB232/genome_taxonomy_1.csv \
-  --dna-packed-db /data/GTDB232/dna2bit-packed-index \
+pixi run microsags assemble SAGs/*.fna \
+  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
+  --output full_output \
   --threads 32 \
-  --memory-gb 128
+  --checkm2-database /data/CheckM2/uniref100.KO.1.dmnd \
+  --gtdbtk-data /data/GTDBTK/r232
 ```
 
-Do not add `--stop-after annotation`. The program performs input preparation,
-DNA2bit annotation and species-guided Stage 3A subassembly. The route is
-recorded per SAG in `INPUT_AUDIT.tsv`.
-
-## Command 3: continue the same run through Stage 3B
-
-After Command 2 has completed successfully, prepare the required Stage 3B
-quality and bac120-marker evidence, then run:
-
-```bash
-pixi run sag-stage3b-tractor \
-  --manifest full_output/03B_unclassified_pending.tsv \
-  --quality-manifest stage3b_quality.tsv \
-  --marker-map bac120_marker_nt_map.tsv \
-  --ani-engine "$PWD/.pixi/envs/default/bin/gtdb-ani-af" \
-  --allow-experimental-ani-engine \
-  --leiden-backend "$PWD/python/stage3b_signed_leiden.py" \
-  --subass "$PWD/.pixi/envs/default/bin/cpp-subass" \
-  --out full_output/03B_unlabelled \
-  --threads 32
-```
-
-Therefore, the current complete 3A+3B workflow is **Command 2 followed by
-Command 3**. Stage 3B is not silently claimed to have run merely because the
-pending manifest exists.
+This single command performs input preparation, DNA2bit annotation,
+species-guided Stage 3A and DNA2bit-negative Stage 3B. The route is recorded
+per SAG in `INPUT_AUDIT.tsv`. CheckM2 and GTDB-Tk executables are found on
+`PATH`; their database paths are explicit because those databases are not
+stored in the source repository.
 
 ## Functional outputs
 
-Microsags v0.1 exposes scientific functions as pipeline stages and files.
+Microsags v0.2 exposes scientific functions through `annotate`, `assemble`
+and `sketch`.
 
 ### SAG species annotation
 
@@ -105,8 +81,7 @@ The annotation products are:
 - `02_dna2bit/labels.tsv`: accepted reference, taxonomy and species group;
 - `03B_unclassified_pending.tsv`: eligible SAGs rejected or without a hit.
 
-With `--stop-after annotation`, the command stops here and does not create
-Stage 3A group assemblies.
+The `annotate` subcommand stops here and does not create Stage 3A assemblies.
 
 ### Stage 3A: species-guided subassembly
 
@@ -124,7 +99,7 @@ Principal outputs:
 
 ### Stage 3B: DNA2bit-negative SAG clustering
 
-Stage 3B is a separate advanced executable. It consumes the Stage 3A hand-off
+The public `assemble` command invokes the Stage 3B engine automatically. It consumes the Stage 3A hand-off
 manifest together with a CheckM2-derived quality table and a bac120 nucleotide
 marker table. Use Command 3 above.
 
