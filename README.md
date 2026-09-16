@@ -2,7 +2,9 @@
 
 把以下流程统一封装成一个 C++17 命令行程序：
 
-1. 主入口读取解压后的文件内容自动识别输入，不依赖扩展名：
+1. 公共CLI可用 `-i/--input-type reads|contigs` 显式选择入口；缺省的
+   `auto` 根据 `.fq/.fastq/.fa/.fasta/.fna`（可带 `.gz`）分流，随后主程序
+   必须再次读取解压内容进行严格验证：
    - 成对 FASTQ：从 `fastp` 质控开始；
    - FASTA contigs：跳过 `fastp` 和 SPAdes，直接从长度门开始；
    - 单端 FASTQ、R1/R2 混合格式、损坏或截断文件均 fail-closed；
@@ -52,7 +54,8 @@ SAG_ID<TAB>/absolute/R1.fastq.gz<TAB>/absolute/R2.fastq.gz
 SAG_ID<TAB>/absolute/assembly.fasta[.gz]
 ```
 
-检测依据是解压后的 FASTA/FASTQ 结构，不是 `.fa`、`.fq`、`.gz` 等文件名。相对路径按 manifest 所在目录解析。
+公共CLI默认根据标准扩展名选择入口，也可用 `--input-type` 强制指定；底层仍以解压后的
+FASTA/FASTQ结构做最终验证。相对路径按manifest所在目录解析。
 
 ## 安装（推荐 pixi）
 
@@ -78,6 +81,7 @@ SPAdes、Flye、BLAST+、python-igraph 和 leidenalg。完整的 pixi、conda �
 
 ```bash
 pixi run microsags annotate SAGs/*.fna \
+  --input-type contigs \
   --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
   --output annotation_output --threads 48
 ```

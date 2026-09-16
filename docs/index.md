@@ -2,8 +2,10 @@
 
 Microsags is a Linux command-line workflow for single-amplified genome (SAG)
 species annotation and species-guided subassembly. It accepts assembled SAG
-contigs or paired short reads as direct paths, directories, or path lists and
-determines the input route from sequence content rather than filename extensions.
+contigs or paired short reads as direct paths, directories, or path lists. The
+route can be selected explicitly with `--input-type`; otherwise the public CLI
+infers it from standard FASTA/FASTQ filename suffixes and the C++ reader still
+validates the actual decompressed records before any scientific processing.
 
 The v0.2 public CLI provides `sketch`, `annotate`, and `assemble`. The complete
 `assemble` workflow performs five auditable operations:

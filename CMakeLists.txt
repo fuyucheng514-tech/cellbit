@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(dna2bit_sag_pipeline VERSION 0.2.0 LANGUAGES CXX)
+project(dna2bit_sag_pipeline VERSION 0.2.1 LANGUAGES CXX)
 
 set(HTS_ROOT "" CACHE PATH "Optional htslib/zlib installation prefix for bundled cpp-subass")
 if(HTS_ROOT)

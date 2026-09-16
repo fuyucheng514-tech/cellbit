@@ -3,7 +3,7 @@ authors = ["fuyucheng514-tech"]
 channels = ["conda-forge", "bioconda"]
 name = "microsags"
 platforms = ["linux-64"]
-version = "0.2.0"
+version = "0.2.1"
 
 [tasks]
 configure = "cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHTS_ROOT=$CONDA_PREFIX -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX"

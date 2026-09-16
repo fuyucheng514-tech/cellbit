@@ -2,8 +2,9 @@
 
 ## Input routes
 
-Microsags reads one tab-separated manifest. Each row represents one SAG. A
-single manifest may contain both accepted row forms.
+The public CLI accepts sequence paths, a directory, or a path list and creates
+the internal tab-separated manifest automatically. Each internal row represents
+one SAG and has one of the following forms.
 
 | Input route | Manifest row | Automatic processing |
 |---|---|---|
@@ -22,9 +23,24 @@ or:
 sag_id	assembly_fasta
 ```
 
-Detection uses the decompressed sequence records. File extensions are not used
-to decide whether an input is FASTA or FASTQ. Single-end FASTQ, mixed R1/R2
-types, truncated records and duplicate normalized SAG identifiers are rejected.
+Use `-i/--input-type reads` or `-i/--input-type contigs` to select a route
+explicitly. If the option is omitted, `--input-type auto` recognizes
+`.fq`, `.fastq`, `.fa`, `.fasta`, and `.fna`, with optional `.gz`. FASTQ files
+supplied through a directory or one combined `--file-list` are paired by their
+`R1`/`R2` filename suffixes. The C++ reader then validates the decompressed
+records, so misleading suffixes, single-end FASTQ, truncated records and
+duplicate normalized SAG identifiers fail closed.
+
+```bash
+# Explicit existing-contig route
+pixi run microsags annotate --input-type contigs SAGs/ -d DB -o annotations
+
+# Explicit paired-read route; a directory may contain many R1/R2 pairs
+pixi run microsags assemble --input-type reads SAG_reads/ -d DB -o full_output
+
+# Automatic route selection from standard suffixes
+pixi run microsags assemble SAGs/ -d DB -o full_output
+```
 
 ## Command 1: species annotation only
 
@@ -33,13 +49,14 @@ do not want Microsags to construct Stage 3A bins:
 
 ```bash
 pixi run microsags annotate SAGs/*.fna \
+  --input-type contigs \
   --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
   --output annotation_output \
   --threads 32
 ```
 
-The command accepts paired reads, existing contigs, or a mixed manifest. For
-reads it first runs fastp and SPAdes; for contigs it skips those two steps.
+The command accepts either paired reads or existing contigs in one invocation.
+For reads it first runs fastp and SPAdes; for contigs it skips those two steps.
 It stops after the original DNA2bit acceptance rule has produced:
 
 - `annotation_output/02_dna2bit/search_result.csv`: raw search result;
@@ -51,6 +68,7 @@ It stops after the original DNA2bit acceptance rule has produced:
 
 ```bash
 pixi run microsags assemble SAGs/*.fna \
+  --input-type contigs \
   --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
   --output full_output \
   --threads 32 \

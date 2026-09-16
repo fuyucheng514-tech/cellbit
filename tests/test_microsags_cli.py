@@ -24,7 +24,7 @@ class Inputs(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             a,b=Path(d)/"sample_R1.fastq",Path(d)/"sample_R2.fastq"
             a.write_text("@x\nA\n+\nI\n"); b.write_text("@x\nT\n+\nI\n")
-            n=Namespace(inputs=[],file_list=None,reads1=str(a),reads2=str(b),r1_list=None,r2_list=None)
+            n=Namespace(inputs=[],file_list=None,reads1=str(a),reads2=str(b),r1_list=None,r2_list=None,input_type="auto")
             self.assertEqual(cli.rows(n)[1][0][0],"sample")
     def test_generic_scaffolds_uses_parent_sag_id(self):
         with tempfile.TemporaryDirectory() as d:
@@ -37,6 +37,20 @@ class Inputs(unittest.TestCase):
                 p=root/name/"scaffolds.fasta"; p.parent.mkdir(parents=True); p.write_text(">x\nA\n")
             a=Namespace(file_list=None,inputs=[str(root)])
             self.assertEqual([cli.sag_id(p) for p in cli.fasta_paths(a)],["A","B"])
+    def test_auto_detects_and_pairs_fastq_directory(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)/"reads"; root.mkdir()
+            for name in ("SAG_A_R1.fastq.gz","SAG_A_R2.fastq.gz"):
+                (root/name).write_text("@x\nA\n+\nI\n")
+            a=Namespace(inputs=[str(root)],file_list=None,reads1=None,reads2=None,
+                        r1_list=None,r2_list=None,input_type="auto")
+            self.assertEqual(cli.rows(a)[1][0][0],"SAG_A")
+    def test_explicit_type_rejects_suffix_conflict(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/"SAG_A.fna"; p.write_text(">x\nA\n")
+            a=Namespace(inputs=[str(p)],file_list=None,reads1=None,reads2=None,
+                        r1_list=None,r2_list=None,input_type="reads")
+            with self.assertRaises(cli.Error): cli.rows(a)
     def test_assemble_passes_flye_root(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); db=root/"db"; db.mkdir()

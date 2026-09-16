@@ -100,7 +100,7 @@ Point Microsags at the extracted directory:
 
 ```bash
 export MICROSAGS_DB="$HOME/microsags-data/dna2bit_gtdb232_packed_v1"
-pixi run microsags annotate SAGs/ -d "$MICROSAGS_DB" -o annotation_output
+pixi run microsags annotate --input-type contigs SAGs/ -d "$MICROSAGS_DB" -o annotation_output
 ```
 
 The packed index receipt binds its taxonomy and reference-manifest checksums.

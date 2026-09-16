@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Microsags public CLI (v0.2.0)."""
+"""Microsags public CLI (v0.2.1)."""
 from __future__ import annotations
 import argparse, csv, os, re, shutil, subprocess, sys, tempfile
 from pathlib import Path
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 FASTA = (".fasta", ".fna", ".fa", ".fas")
 FASTQ = (".fastq", ".fq")
 
@@ -72,10 +72,66 @@ def read_id(path, mate):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", value): raise Error(f"cannot derive SAG ID: {path.name}")
     return value
 
+def input_kind(path):
+    """Classify a sequence path by its user-facing filename suffix."""
+    name = path.name.lower()
+    if name.endswith(".gz"): name = name[:-3]
+    if any(name.endswith(s) for s in FASTA): return "contigs"
+    if any(name.endswith(s) for s in FASTQ): return "reads"
+    raise Error(f"cannot infer input type from suffix: {path}")
+
+def supplied_paths(args):
+    if args.file_list and args.inputs: raise Error("sequence arguments and --file-list are mutually exclusive")
+    if args.file_list:
+        return list_paths(args.file_list)
+    out=[]
+    for value in args.inputs:
+        candidate=Path(value).expanduser().resolve()
+        if candidate.is_dir():
+            found=sorted((p for p in candidate.rglob("*") if p.is_file() and
+                          input_kind_or_none(p)),key=lambda p:str(p).encode())
+            if not found: raise Error(f"directory contains no FASTA/FASTQ files: {candidate}")
+            out.extend(found)
+        else: out.append(file(candidate))
+    return out
+
+def input_kind_or_none(path):
+    try: return input_kind(path)
+    except Error: return None
+
+def pair_paths(paths):
+    pairs={}
+    for p in paths:
+        name=stem(p,FASTQ)
+        match=re.search(r"(?:^|[_.-])R?([12])(?:_001)?$",name,re.I)
+        if not match: raise Error(f"FASTQ filename lacks an R1/R2 mate suffix: {p.name}")
+        mate=int(match.group(1)); sid=read_id(p,mate)
+        if mate in pairs.setdefault(sid,{}): raise Error(f"duplicate R{mate} for SAG: {sid}")
+        pairs[sid][mate]=p
+    out=[]
+    for sid,mates in sorted(pairs.items(),key=lambda x:x[0].encode()):
+        if set(mates)!={1,2}: raise Error(f"SAG does not have exactly one R1 and one R2: {sid}")
+        out.append([sid,str(mates[1]),str(mates[2])])
+    return out
+
 def rows(args):
     read_mode = any((args.reads1, args.reads2, args.r1_list, args.r2_list))
+    requested=getattr(args,"input_type","auto")
+    if requested=="contigs" and read_mode: raise Error("--input-type contigs cannot be used with read-pair options")
     if not read_mode:
-        ps = fasta_paths(args); return ["sag_id", "assembly_fasta"], [[sag_id(p), str(p)] for p in ps]
+        ps=supplied_paths(args)
+        if not ps: raise Error("provide FASTA/FASTQ files, a directory, or a file list")
+        kinds={input_kind(p) for p in ps}
+        if requested=="auto":
+            if len(kinds)!=1: raise Error("auto input detection found mixed reads and contigs; select one input type")
+            requested=next(iter(kinds))
+        if kinds!={requested}: raise Error(f"--input-type {requested} conflicts with one or more filename suffixes")
+        if requested=="contigs":
+            ids=[sag_id(p) for p in ps]
+            if len(ids)!=len(set(ids)): raise Error("duplicate SAG IDs after filename normalization")
+            return ["sag_id", "assembly_fasta"], [[sag_id(p),str(p)] for p in ps]
+        return ["sag_id","r1","r2"],pair_paths(ps)
+    if requested=="contigs": raise Error("read-pair options require --input-type reads or auto")
     if args.inputs or args.file_list: raise Error("FASTA inputs cannot be mixed with reads")
     if args.reads1 or args.reads2:
         if not (args.reads1 and args.reads2) or args.r1_list or args.r2_list: raise Error("use -1 and -2 together")
@@ -168,9 +224,11 @@ def sketch(args):
         print(f"incomplete work retained: {work}",file=sys.stderr); raise
 
 def add_inputs(p, reads):
-    p.add_argument("inputs",nargs="*",metavar="FASTA",help="FASTA files or a directory containing one FASTA per SAG")
-    p.add_argument("-l","--file-list",metavar="FILE",help="one FASTA path per line")
+    p.add_argument("inputs",nargs="*",metavar="SEQUENCE",help="sequence files or a directory containing SAG inputs")
+    p.add_argument("-l","--file-list",metavar="FILE",help="one sequence path per line")
     if reads:
+        p.add_argument("-i","--input-type",choices=("auto","reads","contigs"),default="auto",
+                       help="input route (default: infer from .fq/.fastq/.fa/.fasta/.fna, optionally .gz)")
         p.add_argument("-1","--reads1",metavar="FASTQ",help="R1 FASTQ for one unassembled SAG")
         p.add_argument("-2","--reads2",metavar="FASTQ",help="R2 FASTQ for one unassembled SAG")
         p.add_argument("--r1-list",metavar="FILE",help="one R1 path per line for batch reads")

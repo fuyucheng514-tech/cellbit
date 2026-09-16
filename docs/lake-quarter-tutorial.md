@@ -43,6 +43,7 @@ cut -f2 lake_contigs_quarter.tsv | tail -n +2 > lake_contigs_quarter.paths.txt
 
 pixi run microsags assemble \
   --file-list lake_contigs_quarter.paths.txt \
+  --input-type contigs \
   --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
   --output lake_quarter_output \
   --threads 128 \
