@@ -23,7 +23,9 @@ SPAdes is not run.
 microsags annotate SAGs/ -d database -o annotation_output
 ```
 
-The principal result is `annotation_output/02_dna2bit/labels.tsv`.
+The only published result is `annotation_output/annotations.tsv`, with one row
+per input SAG and exactly two columns: `sag_id` and `species`. Rejected or
+unmatched SAGs are reported as `UNCLASSIFIED`.
 
 ## Assembly mode
 
@@ -32,7 +34,7 @@ assemble every SAG independently first and preserve the same SAG identifiers.
 
 ```bash
 microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output \
+  --annotations annotation_output/annotations.tsv \
   -o assembly_output \
   --checkm2-database checkm2_database \
   --gtdbtk-data gtdbtk_database
@@ -45,7 +47,7 @@ To override only the Stage 3B Leiden resolution:
 
 ```bash
 microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output \
+  --annotations annotation_output/annotations.tsv \
   -o assembly_output \
   --checkm2-database checkm2_database \
   --gtdbtk-data gtdbtk_database \
@@ -53,6 +55,11 @@ microsags assemble --input-type contigs SAG_contigs/ \
 ```
 
 If `--leiden-resolution` is omitted, the frozen default sweep is used.
+
+Assembly publishes only `stage3a.tsv`, final Stage 3A FASTA files,
+`stage3b_clusters.tsv`, and final Stage 3B FASTA files. Temporary scientific
+work is kept outside the result directory on failure and removed after a
+successful publication.
 
 ## Build a database
 

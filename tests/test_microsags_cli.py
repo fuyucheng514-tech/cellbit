@@ -85,4 +85,41 @@ class Inputs(unittest.TestCase):
                 cli.pipeline(args,root/"manifest.tsv",False)
             command=invoked.call_args.args[0]
             self.assertEqual(command[command.index("--flye-root")+1],prefix.resolve())
+    def test_annotation_publication_is_two_columns_and_complete(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); work=root/"work"; (work/"02_dna2bit").mkdir(parents=True)
+            (work/"02_dna2bit/labels.tsv").write_text(
+                "sag_id\treference\ttaxonomy\tspecies_group\nA\tGCF_1\td__Bacteria;s__Species_alpha\tSpecies_alpha\n")
+            cli._publish_annotations(work,root/"result",[["A","a.fna"],["B","b.fna"]])
+            self.assertEqual((root/"result/annotations.tsv").read_text(),
+                             "sag_id\tspecies\nA\tSpecies_alpha\nB\tUNCLASSIFIED\n")
+            self.assertEqual([p.name for p in (root/"result").iterdir()],["annotations.tsv"])
+    def test_two_column_annotations_rebuild_internal_handoff(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); table=root/"annotations.tsv"
+            table.write_text("sag_id\tspecies\nA\tSpecies_alpha\nB\tUNCLASSIFIED\n")
+            cli._compat_annotations(table,[["A","a.fna"],["B","b.fna"]],root/"compat")
+            self.assertIn("A\tNA\ts__Species_alpha\tSpecies_alpha",
+                          (root/"compat/02_dna2bit/labels.tsv").read_text())
+            self.assertIn("B\tb.fna\tdna2bit_rejected_or_no_hit",
+                          (root/"compat/03B_unclassified_pending.tsv").read_text())
+    def test_final_assembly_publication_is_minimal(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); work=root/"work"
+            (work/"03A_subassemble/species/run").mkdir(parents=True)
+            a=work/"03A_subassemble/species/run/assembly.fasta"; a.write_text(">a\nACGT\n")
+            (work/"03A_subassemble/groups.tsv").write_text(
+                f"species_group\tsag_count\tinput_fasta\tbin_fasta\nSpecies_alpha\t2\tin.fa\t{a}\n")
+            (work/"stage3b/result/05_signed_leiden").mkdir(parents=True)
+            (work/"stage3b/result/05_signed_leiden/chosen_membership.tsv").write_text(
+                "cluster\tSAG_id\tcluster_size\nG0001\tB\t10\n")
+            (work/"stage3b/result/06_subassemble/G0001/run").mkdir(parents=True)
+            b=work/"stage3b/result/06_subassemble/G0001/run/assembly.fasta"; b.write_text(">b\nTGCA\n")
+            (work/"stage3b/result/06_subassemble/clusters.tsv").write_text(
+                f"cluster\tn_sags\tn_found\tinput_fasta\tbin_fasta\nG0001\t10\t10\tin.fa\t{b}\n")
+            cli._publish_assemblies(work,root/"result")
+            self.assertEqual(sorted(p.name for p in (root/"result").iterdir()),
+                             ["stage3a","stage3a.tsv","stage3b","stage3b_clusters.tsv"])
+            self.assertTrue((root/"result/stage3a/Species_alpha.fasta").is_file())
+            self.assertTrue((root/"result/stage3b/G0001.fasta").is_file())
 if __name__ == "__main__": unittest.main()

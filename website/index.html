@@ -104,18 +104,32 @@ microsags --help</code></pre>
 
       <article class="doc-page" data-page="usage" data-title="Usage examples">
         <h1>Usage examples</h1>
-        <p class="lead">The examples page follows the short-command style used by SemiBin. Only the confirmed entry points are shown here.</p>
+        <p class="lead">Microsags has two sequential modes: annotate first, then assemble.</p>
         <h2 id="usage-help">Check the installed command</h2>
         <pre><code>microsags --help</code></pre>
-        <h2 id="usage-contigs">Contigs input</h2>
-        <p>Provide a two-column tab-separated manifest with <code>sag_id</code> and <code>contigs</code>. The exact production runner and output contract are documented in the release-specific files.</p>
-        <pre><code>sag_id&lt;TAB&gt;contigs
-SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001.fa</code></pre>
-        <h2 id="usage-reads">Paired reads input</h2>
-        <p>Provide a three-column manifest with exact headers <code>sag_id</code>, <code>r1</code>, and <code>r2</code>.</p>
-        <pre><code>sag_id&lt;TAB&gt;r1&lt;TAB&gt;r2
-SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001_R1.fastq.gz&lt;TAB&gt;/absolute/path/SAG_0001_R2.fastq.gz</code></pre>
-        <div class="placeholder" aria-label="Usage command pending"><span> </span></div>
+        <h2 id="usage-annotation">Annotation mode</h2>
+        <p>Annotation accepts paired FASTQ, singleton FASTQ, or per-SAG contigs.</p>
+        <pre><code>microsags annotate SAGs/ -d database -o annotation_output</code></pre>
+        <p>It publishes one file:</p>
+        <pre><code>annotation_output/
+└── annotations.tsv</code></pre>
+        <pre><code>sag_id	species
+SAG_0001	Polynucleobacter_sp...
+SAG_0002	UNCLASSIFIED</code></pre>
+        <h2 id="usage-assembly">Assembly mode</h2>
+        <p>Assembly accepts per-SAG contigs and the two-column annotation table.</p>
+        <pre><code>microsags assemble --input-type contigs SAG_contigs/ \
+  --annotations annotation_output/annotations.tsv \
+  -o assembly_output \
+  --checkm2-database checkm2_database \
+  --gtdbtk-data gtdbtk_database</code></pre>
+        <pre><code>assembly_output/
+├── stage3a.tsv
+├── stage3a/
+│   └── &lt;species&gt;.fasta
+├── stage3b_clusters.tsv
+└── stage3b/
+    └── &lt;group_id&gt;.fasta</code></pre>
       </article>
 
       <article class="doc-page" data-page="input" data-title="Input preparation">
@@ -134,20 +148,14 @@ SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001_R1.fastq.gz&lt;TAB&gt;/absolute/path/
 
       <article class="doc-page" data-page="workflow" data-title="Workflow modes">
         <h1>Workflow modes</h1>
-        <p class="lead">Two input modes are documented separately, as in the reference documentation.</p>
-        <h2 id="workflow-contigs">Contigs route</h2>
-        <pre><code>contigs manifest
-  → length gate
-  → DNA2bit classification
-  → downstream workflow</code></pre>
-        <h2 id="workflow-reads">Reads route</h2>
-        <pre><code>paired reads manifest
-  → read processing and assembly
-  → contigs
-  → DNA2bit classification
-  → downstream workflow</code></pre>
-        <h2 id="workflow-boundary">Boundary</h2>
-        <p>These routes have different computational scope. A reads run includes the upstream read-processing and assembly cost; a contigs run does not.</p>
+        <p class="lead">The modes are sequential, not alternatives.</p>
+        <h2 id="workflow-annotation">1. Annotation</h2>
+        <pre><code>FASTQ or contigs → DNA2bit → annotations.tsv</code></pre>
+        <h2 id="workflow-assembly">2. Assembly</h2>
+        <pre><code>contigs + annotations.tsv
+  → labelled SAGs: Stage 3A
+  → unclassified SAGs: Stage 3B
+  → final group assemblies</code></pre>
       </article>
 
       <article class="doc-page" data-page="stage3a" data-title="Stage3A">
@@ -176,20 +184,17 @@ SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001_R1.fastq.gz&lt;TAB&gt;/absolute/path/
 
       <article class="doc-page" data-page="output" data-title="Output and reproducibility">
         <h1>Output and reproducibility</h1>
-        <p class="lead">A result is reproducible only when its code, environment, input, database, parameters, and evidence are retained together.</p>
-        <h2 id="output-tree">Attempt layout</h2>
-        <pre><code>attempt_001/
-├── 00_control/
-├── 01_input/
-├── 02_dna2bit/
-├── 03_stage3a/
-├── 04_stage3b/
-├── 05_assembly/
-├── 06_final_view/
-└── receipts/</code></pre>
-        <h2 id="output-evidence">Evidence</h2>
-        <ul><li>Keep the manifest, runner, launcher, database and binaries with SHA256 records.</li><li>Keep logs, phase receipts, final result metadata and failed attempts.</li><li>Use a new write-once attempt for a rerun; do not overwrite a previous result.</li></ul>
-        <div class="placeholder" aria-label="Quality report specification pending"><span> </span></div>
+        <p class="lead">Only concise scientific results are published in the requested output directory.</p>
+        <h2 id="output-annotation">Annotation output</h2>
+        <pre><code>annotation_output/
+└── annotations.tsv</code></pre>
+        <h2 id="output-assembly">Assembly output</h2>
+        <pre><code>assembly_output/
+├── stage3a.tsv
+├── stage3a/&lt;species&gt;.fasta
+├── stage3b_clusters.tsv
+└── stage3b/&lt;group_id&gt;.fasta</code></pre>
+        <p>Intermediate work is kept outside the result directory if a run fails and is removed after successful publication.</p>
       </article>
 
       <article class="doc-page" data-page="api" data-title="API reference">

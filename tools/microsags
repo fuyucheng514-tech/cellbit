@@ -236,16 +236,106 @@ def stage3b(args):
     if args.leiden_resolution is not None: command += ["--leiden-resolution",args.leiden_resolution]
     run(command)
 
+def _species_name(taxonomy, fallback):
+    hits = re.findall(r"(?:^|;)s__([^;]+)", taxonomy)
+    value = hits[-1].strip() if hits else fallback.strip()
+    return value or "UNCLASSIFIED"
+
+def _publish_annotations(work, destination, input_rows):
+    labelled = {}
+    with (work/"02_dna2bit/labels.tsv").open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle, delimiter="\t"):
+            labelled[row["sag_id"]] = _species_name(row.get("taxonomy", ""), row.get("species_group", ""))
+    expected = [row[0] for row in input_rows]
+    if len(expected) != len(set(expected)):
+        raise Error("duplicate SAG identifier in annotation input")
+    staging = destination.parent/f".{destination.name}.publish-{os.getpid()}"
+    if staging.exists(): raise Error(f"publication staging path exists: {staging}")
+    staging.mkdir()
+    with (staging/"annotations.tsv").open("w", newline="", encoding="utf-8") as handle:
+        writer=csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(["sag_id", "species"])
+        for sag in expected: writer.writerow([sag, labelled.get(sag, "UNCLASSIFIED")])
+    staging.rename(destination)
+
+def _compat_annotations(annotation_file, contig_rows, destination):
+    annotation_file=file(annotation_file)
+    rows_by_id={}
+    with annotation_file.open(newline="",encoding="utf-8-sig") as handle:
+        reader=csv.DictReader(handle,delimiter="\t")
+        if reader.fieldnames != ["sag_id","species"]:
+            raise Error("annotation TSV header must be: sag_id<TAB>species")
+        for row in reader:
+            sag=row["sag_id"].strip(); species=row["species"].strip()
+            if not sag or not species: raise Error("annotation TSV contains an empty SAG or species")
+            if sag in rows_by_id: raise Error(f"duplicate SAG in annotation TSV: {sag}")
+            rows_by_id[sag]=species
+    contigs={row[0]:row[1] for row in contig_rows}
+    if set(rows_by_id) != set(contigs):
+        raise Error("contig SAG set must exactly match annotation TSV SAG set")
+    (destination/"02_dna2bit").mkdir(parents=True)
+    with (destination/"02_dna2bit/labels.tsv").open("w",newline="",encoding="utf-8") as labels, \
+         (destination/"03B_unclassified_pending.tsv").open("w",newline="",encoding="utf-8") as pending:
+        lw=csv.writer(labels,delimiter="\t",lineterminator="\n"); pw=csv.writer(pending,delimiter="\t",lineterminator="\n")
+        lw.writerow(["sag_id","reference","taxonomy","species_group"])
+        pw.writerow(["sag_id","assembly_fasta","reason"])
+        for sag,path in contig_rows:
+            species=rows_by_id[sag]
+            if species.upper()=="UNCLASSIFIED": pw.writerow([sag,path,"dna2bit_rejected_or_no_hit"])
+            else: lw.writerow([sag,"NA",f"s__{species}",species])
+
+def _publish_assemblies(work, destination):
+    staging=destination.parent/f".{destination.name}.publish-{os.getpid()}"
+    if staging.exists(): raise Error(f"publication staging path exists: {staging}")
+    (staging/"stage3a").mkdir(parents=True)
+    (staging/"stage3b").mkdir()
+    with (work/"03A_subassemble/groups.tsv").open(newline="",encoding="utf-8") as source, \
+         (staging/"stage3a.tsv").open("w",newline="",encoding="utf-8") as target:
+        reader=csv.DictReader(source,delimiter="\t"); writer=csv.writer(target,delimiter="\t",lineterminator="\n")
+        writer.writerow(["species","assembly_fasta"])
+        for row in reader:
+            species=row["species_group"]; dst=staging/"stage3a"/f"{species}.fasta"
+            shutil.copy2(file(row["bin_fasta"]),dst); writer.writerow([species,f"stage3a/{dst.name}"])
+    membership=work/"stage3b/result/05_signed_leiden/chosen_membership.tsv"
+    with (staging/"stage3b_clusters.tsv").open("w",newline="",encoding="utf-8") as target:
+        writer=csv.writer(target,delimiter="\t",lineterminator="\n")
+        writer.writerow(["group_id","sag_id"])
+        if membership.is_file():
+            with membership.open(newline="",encoding="utf-8") as source:
+                for row in csv.DictReader(source,delimiter="\t"):
+                    writer.writerow([row["cluster"],row.get("SAG_id",row.get("sag_id"))])
+    clusters=work/"stage3b/result/06_subassemble/clusters.tsv"
+    if clusters.is_file():
+        with clusters.open(newline="",encoding="utf-8") as source:
+            for row in csv.DictReader(source,delimiter="\t"):
+                shutil.copy2(file(row["bin_fasta"]),staging/"stage3b"/f"{row['cluster']}.fasta")
+    staging.rename(destination)
+
 def annotate_assemble(args):
-    header, data = rows(args); parent=Path(args.output).expanduser().resolve().parent; parent.mkdir(parents=True,exist_ok=True)
+    header, data = rows(args); final=Path(args.output).expanduser().resolve(); parent=final.parent; parent.mkdir(parents=True,exist_ok=True)
+    if final.exists(): raise Error(f"write-once output exists: {final}")
+    work=parent/f".{final.name}.work"
+    if work.exists(): raise Error(f"write-once work directory exists: {work}")
     if args.command=="assemble" and header != ["sag_id", "assembly_fasta"]:
         raise Error("assembly mode accepts only per-SAG FASTA contigs; use --input-type contigs")
     with tempfile.NamedTemporaryFile("w",encoding="utf-8",newline="",suffix=".tsv",dir=parent,delete=False) as h:
         manifest=Path(h.name); w=csv.writer(h,delimiter="\t",lineterminator="\n"); w.writerow(header); w.writerows(data)
     try:
+        original_output=args.output; original_annotations=getattr(args,"annotations",None)
+        args.output=str(work)
+        if args.command=="assemble":
+            compat=parent/f".{final.name}.annotations-{os.getpid()}"
+            _compat_annotations(original_annotations,data,compat); args.annotations=str(compat)
         pipeline(args,manifest,args.command=="annotate")
         if args.command=="assemble": stage3b(args)
-    finally: manifest.unlink(missing_ok=True)
+        if args.command=="annotate": _publish_annotations(work,final,data)
+        else: _publish_assemblies(work,final)
+        shutil.rmtree(work)
+        if args.command=="assemble": shutil.rmtree(compat)
+    finally:
+        args.output=original_output
+        if args.command=="assemble": args.annotations=original_annotations
+        manifest.unlink(missing_ok=True)
 
 def sketch(args):
     refs=fasta_paths(args); taxonomy=file(args.taxonomy); out=Path(args.output).expanduser().resolve()
@@ -290,7 +380,7 @@ def make_parser():
     add_inputs(q,False)
     q.add_argument("-i","--input-type",choices=("contigs",),default="contigs",
                    help="assembly accepts per-SAG FASTA contigs only")
-    q.add_argument("-a","--annotations",required=True,metavar="DIR",help="completed annotation-mode output directory")
+    q.add_argument("-a","--annotations",required=True,metavar="TSV",help="annotations.tsv produced by annotation mode")
     q.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once assembly directory")
     q.add_argument("-t","--threads",type=int,default=os.cpu_count() or 1,metavar="INT",help="worker limit (default: detected CPUs)")
     g=q.add_argument_group("Stage 3B dependencies")

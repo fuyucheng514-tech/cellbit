@@ -58,8 +58,7 @@ SAGs/
 └── ...
 ```
 
-The principal result is
-`annotation_output/02_dna2bit/labels.tsv`.
+The only published result is `annotation_output/annotations.tsv`.
 
 Example result (illustrative species names):
 
@@ -68,6 +67,7 @@ sag_id      species
 SAG_0001    Example_species_A
 SAG_0002    Example_species_B
 SAG_0003    Example_species_C
+SAG_0004    UNCLASSIFIED
 ...         ...
 ```
 
@@ -85,7 +85,7 @@ SAG_0003             →     SAG_0003.fna
 ```
 
 Microsags requires the contig SAG set to match the union of labelled and
-unclassified SAGs in `annotation_output`. A missing, extra or duplicate SAG
+unclassified SAGs in `annotation_output/annotations.tsv`. A missing, extra or duplicate SAG
 causes a hard stop.
 
 ## Assembly mode
@@ -95,7 +95,7 @@ run fastp, SPAdes or DNA2bit again.
 
 ```bash
 microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output \
+  --annotations annotation_output/annotations.tsv \
   -o assembly_output \
   --checkm2-database checkm2_database \
   --gtdbtk-data gtdbtk_database
@@ -118,7 +118,7 @@ The Stage 3B Leiden resolution is optional and adjustable:
 
 ```bash
 microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output \
+  --annotations annotation_output/annotations.tsv \
   -o assembly_output \
   --checkm2-database checkm2_database \
   --gtdbtk-data gtdbtk_database \
@@ -132,15 +132,14 @@ Example output:
 
 ```text
 assembly_output/
-├── 03A_subassemble/
-│   ├── Example_species_A/run/assembly.fasta
-│   ├── Example_species_B/run/assembly.fasta
+├── stage3a.tsv
+├── stage3a/
+│   ├── Example_species_A.fasta
 │   └── ...
-├── stage3b/
-│   └── result/
-│       ├── 06_subassemble/cluster_00001/run/assembly.fasta
-│       └── ...
-└── COMPLETE.json
+├── stage3b_clusters.tsv
+└── stage3b/
+    ├── G0001.fasta
+    └── ...
 ```
 
 ## Common options
@@ -150,7 +149,7 @@ assembly_output/
 | `-i, --input-type` | Annotation | `auto`, `fastq`, `singleton` or `contigs` |
 | `-i, --input-type` | Assembly | `contigs` only |
 | `-d, --database` | Annotation | DNA2bit database directory |
-| `-a, --annotations` | Assembly | Completed Annotation-mode output directory |
+| `-a, --annotations` | Assembly | `annotations.tsv` produced by Annotation mode |
 | `-o, --output` | Both | New write-once output directory |
 | `-t, --threads` | Both | Number of worker threads |
 | `--leiden-resolution` | Assembly | Optional Stage 3B Leiden resolution |

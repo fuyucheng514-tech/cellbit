@@ -51,7 +51,7 @@ microsags annotate \
 microsags assemble \
   --file-list lake_contigs_quarter.paths.txt \
   --input-type contigs \
-  --annotations lake_quarter_annotation \
+  --annotations lake_quarter_annotation/annotations.tsv \
   -o lake_quarter_assembly \
   --threads 128 \
   --checkm2-database /data/CheckM2/uniref100.KO.1.dmnd \
@@ -119,10 +119,11 @@ uncontrolled shared-filesystem measurement, not a strict cold-cache benchmark.
 
 ```bash
 python -m json.tool lake_quarter_annotation/COMPLETE.json
-head lake_quarter_annotation/02_dna2bit/labels.tsv
+head lake_quarter_annotation/annotations.tsv
 head lake_quarter_annotation/03B_unclassified_pending.tsv
 python -m json.tool lake_quarter_assembly/COMPLETE.json
-head lake_quarter_assembly/03A_subassemble/groups.tsv
+head lake_quarter_assembly/stage3a.tsv
+head lake_quarter_assembly/stage3b_clusters.tsv
 ```
 
 These measurements describe the recorded Stage 1-3A checkpoint and must not be

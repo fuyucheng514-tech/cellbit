@@ -22,7 +22,7 @@ completed Annotation-mode output directory.
 
 ```bash
 microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output \
+  --annotations annotation_output/annotations.tsv \
   -o assembly_output \
   --checkm2-database checkm2_database \
   --gtdbtk-data gtdbtk_database
