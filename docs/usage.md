@@ -33,13 +33,13 @@ duplicate normalized SAG identifiers fail closed.
 
 ```bash
 # Explicit existing-contig route
-microsags annotate --input-type contigs SAGs/ -d DB -o annotations
+microsags annotate --input-type contigs SAGs/ -d database -o annotations
 
 # Explicit paired-read route; a directory may contain many R1/R2 pairs
-microsags assemble --input-type reads SAG_reads/ -d DB -o full_output
+microsags assemble --input-type reads SAG_reads/ -d database -o full_output
 
 # Automatic route selection from standard suffixes
-microsags assemble SAGs/ -d DB -o full_output
+microsags assemble SAGs/ -d database -o full_output
 ```
 
 ## Command 1: species annotation only

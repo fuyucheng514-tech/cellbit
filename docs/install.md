@@ -75,9 +75,29 @@ sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
 
+For example, `SAGs/` can contain one assembled FASTA file per SAG:
+
+```text
+SAGs/
+├── SAG_0001.fna
+├── SAG_0002.fasta
+└── SAG_0003.fa.gz
+```
+
+The contents of `SAG_0001.fna` look like this (sequences shortened here only
+for display):
+
+```text
+>contig_1
+ATGCGTACGTTAGCTAGCTAGCTGACTG...
+>contig_2
+GCTTACGATCGATCGGATCGATGCA...
+```
+
+Run annotation directly with the input directory and database directory:
+
 ```bash
-export MICROSAGS_DB="$HOME/microsags-data/dna2bit_gtdb232_packed_v1"
-microsags annotate --input-type contigs SAGs/ -d "$MICROSAGS_DB" -o annotation_output
+microsags annotate --input-type contigs SAGs/ -d database -o annotation_output
 ```
 
 The packed index receipt binds its taxonomy and reference-manifest checksums.
