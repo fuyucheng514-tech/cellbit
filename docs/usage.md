@@ -94,11 +94,9 @@ Assembly mode reads prior species annotations and per-SAG contigs. It does not
 run fastp, SPAdes or DNA2bit again.
 
 ```bash
-microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output/annotations.tsv \
-  -o assembly_output \
-  --checkm2-database checkm2_database \
-  --gtdbtk-data gtdbtk_database
+microsags assemble SAG_contigs/ \
+  -a annotation_output/annotations.tsv \
+  -o assembly_output
 ```
 
 ```text
@@ -117,11 +115,9 @@ graph-clustering workflow. Both routes retain the existing
 The Stage 3B Leiden resolution is optional and adjustable:
 
 ```bash
-microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output/annotations.tsv \
+microsags assemble SAG_contigs/ \
+  -a annotation_output/annotations.tsv \
   -o assembly_output \
-  --checkm2-database checkm2_database \
-  --gtdbtk-data gtdbtk_database \
   --leiden-resolution 0.18
 ```
 

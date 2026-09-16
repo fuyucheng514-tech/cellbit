@@ -197,6 +197,28 @@ def helper(name):
         if p.is_file(): return p
     raise Error(f"Stage 3B helper missing: {name}")
 
+def configured_paths():
+    """Load optional machine-local database paths without changing the shell."""
+    here=Path(__file__).resolve()
+    candidates=[
+        here.parent.parent/"share/microsags/paths.env",
+        here.parent.parent/"config/paths.env",
+        Path(os.getenv("XDG_CONFIG_HOME",Path.home()/".config"))/"microsags/paths.env",
+    ]
+    if os.getenv("MICROSAGS_CONFIG"):
+        candidates.append(Path(os.environ["MICROSAGS_CONFIG"]).expanduser())
+    values={}
+    for candidate in candidates:
+        if not candidate.is_file(): continue
+        for raw in candidate.read_text(encoding="utf-8").splitlines():
+            line=raw.strip()
+            if not line or line.startswith("#") or "=" not in line: continue
+            key,value=line.split("=",1)
+            value=value.strip().strip('"').strip("'")
+            if key.strip() in {"CHECKM2DB","GTDBTK_DATA_PATH"} and value:
+                values[key.strip()]=value
+    return values
+
 def flye_root():
     """Return the Flye installation prefix expected by the embedded runner."""
     return Path(exe("flye")).resolve().parent.parent
@@ -222,9 +244,12 @@ def stage3b(args):
     if sum(1 for _ in pending.open(encoding="utf-8")) <= 1:
         print("Stage 3B: no negative SAGs.", file=sys.stderr); return
     checkm2, gtdbtk = args.checkm2 or shutil.which("checkm2"), args.gtdbtk or shutil.which("gtdbtk")
-    cdb = args.checkm2_database or os.getenv("CHECKM2DB"); gdb = args.gtdbtk_data or os.getenv("GTDBTK_DATA_PATH")
+    configured=configured_paths()
+    cdb = args.checkm2_database or os.getenv("CHECKM2DB") or configured.get("CHECKM2DB")
+    gdb = args.gtdbtk_data or os.getenv("GTDBTK_DATA_PATH") or configured.get("GTDBTK_DATA_PATH")
     if not checkm2 or not gtdbtk: raise Error("assemble requires CheckM2 and GTDB-Tk; install them or pass their paths")
-    if not cdb or not gdb: raise Error("assemble requires CheckM2 and GTDB-Tk database paths")
+    if not cdb or not gdb:
+        raise Error("Stage 3B databases are not configured; set CHECKM2DB and GTDBTK_DATA_PATH once in ~/.config/microsags/paths.env")
     base = root/"stage3b"; view, stats, upstream, evidence, result = [base/x for x in ("input","stats","upstream","evidence","result")]
     run([sys.executable, helper("prepare_stage3b_upstream_input.py"), "--pending", pending, "--out-dir", view])
     run([sys.executable, helper("prepare_stage3b_pending_stats.py"), "--pending", pending, "--stats", root/"STAGE3B_FASTA_STATS.tsv", "--out-dir", stats])
@@ -394,9 +419,9 @@ def make_parser():
     q.add_argument("-t","--threads",type=int,default=os.cpu_count() or 1,metavar="INT",help="worker limit (default: detected CPUs)")
     g=q.add_argument_group("Stage 3B dependencies")
     g.add_argument("--checkm2",metavar="PATH",help="CheckM2 executable (default: PATH)")
-    g.add_argument("--checkm2-database",metavar="FILE",help="CheckM2 DIAMOND database (or CHECKM2DB)")
+    g.add_argument("--checkm2-database",metavar="FILE",help="override the configured CheckM2 database")
     g.add_argument("--gtdbtk",metavar="PATH",help="GTDB-Tk executable (default: PATH)")
-    g.add_argument("--gtdbtk-data",metavar="DIR",help="GTDB-Tk data root (or GTDBTK_DATA_PATH)")
+    g.add_argument("--gtdbtk-data",metavar="DIR",help="override the configured GTDB-Tk data root")
     q.add_argument("--leiden-resolution",type=float,metavar="FLOAT",
                    help="override Stage 3B Leiden resolution (default: frozen sweep)")
     return p

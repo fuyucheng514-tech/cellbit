@@ -50,12 +50,9 @@ microsags annotate \
 
 microsags assemble \
   --file-list lake_contigs_quarter.paths.txt \
-  --input-type contigs \
-  --annotations lake_quarter_annotation/annotations.tsv \
+  -a lake_quarter_annotation/annotations.tsv \
   -o lake_quarter_assembly \
-  --threads 128 \
-  --checkm2-database /data/CheckM2/uniref100.KO.1.dmnd \
-  --gtdbtk-data /data/GTDBTK/r232
+  --threads 128
 ```
 
 Because every selected input is FASTA, the expected route is:

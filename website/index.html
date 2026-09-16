@@ -92,8 +92,10 @@ cmake --install build --prefix "$HOME/.local"
 microsags --help</code></pre>
         <h2 id="install-external">External artifacts</h2>
         <p>Large databases are not included in the GitHub release. Copy the template below and fill in absolute paths on the target machine.</p>
-        <pre><code>cp config/paths.env.example config/paths.env
-# edit MICROSAGS_DNA_TAX and MICROSAGS_DNA_PACKED_DB</code></pre>
+        <pre><code>mkdir -p "$HOME/.config/microsags"
+cp config/paths.env.example "$HOME/.config/microsags/paths.env"
+# edit CHECKM2DB and GTDBTK_DATA_PATH once</code></pre>
+        <p>Assembly finds these two Stage 3B databases automatically. Their command-line options are optional overrides, not part of the normal command.</p>
         <h2 id="install-build-database">Build a database for a new GTDB release</h2>
         <p>If GTDB is updated, build a compatible packed database directly from the new reference genomes and taxonomy table:</p>
         <pre><code>microsags sketch references/ -x taxonomy.csv -o database -t 32</code></pre>
@@ -112,7 +114,7 @@ GCA_000002285.5,d__Bacteria;p__...;c__...;o__...;f__...;g__...;s__...</code></pr
         <p>Microsags is not yet published in Bioconda, so install it using this repository's <code>environment.yml</code> and <code>install.sh</code>.</p>
         <table><thead><tr><th>Artifact</th><th>Where it is recorded</th></tr></thead><tbody>
           <tr><td>Source and binaries</td><td>Release archive and SHA256SUMS.txt</td></tr>
-          <tr><td>Database paths</td><td>config/paths.env</td></tr>
+          <tr><td>Stage 3B database paths</td><td>~/.config/microsags/paths.env</td></tr>
           <tr><td>Other external components</td><td>EXTERNAL_COMPONENTS.tsv</td></tr>
         </tbody></table>
       </article>
@@ -133,11 +135,9 @@ SAG_0001	Polynucleobacter_sp...
 SAG_0002	UNCLASSIFIED</code></pre>
         <h2 id="usage-assembly">Assembly mode</h2>
         <p>Assembly accepts per-SAG contigs and the two-column annotation table.</p>
-        <pre><code>microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output/annotations.tsv \
-  -o assembly_output \
-  --checkm2-database checkm2_database \
-  --gtdbtk-data gtdbtk_database</code></pre>
+        <pre><code>microsags assemble SAG_contigs/ \
+  -a annotation_output/annotations.tsv \
+  -o assembly_output</code></pre>
         <pre><code>assembly_output/
 ├── stage3a.tsv
 ├── stage3a/

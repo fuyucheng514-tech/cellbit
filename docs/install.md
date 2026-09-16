@@ -67,6 +67,27 @@ sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
 
+## Configure Stage 3B databases once
+
+CheckM2 and GTDB-Tk are called automatically by Assembly mode. Record their
+database locations once so normal Assembly commands stay short:
+
+```bash
+mkdir -p "$HOME/.config/microsags"
+cp config/paths.env.example "$HOME/.config/microsags/paths.env"
+```
+
+Edit the copied file:
+
+```text
+CHECKM2DB=/data/CheckM2/uniref100.KO.1.dmnd
+GTDBTK_DATA_PATH=/data/GTDBTK/release
+```
+
+After this one-time configuration, users do not pass either database path on
+every run. `--checkm2-database` and `--gtdbtk-data` remain available only as
+explicit overrides.
+
 ## Build a database for a new GTDB release
 
 If GTDB is updated, users can build a compatible database directly from the

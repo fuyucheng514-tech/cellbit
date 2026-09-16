@@ -1,4 +1,4 @@
-import importlib.machinery, importlib.util, tempfile, unittest
+import importlib.machinery, importlib.util, os, tempfile, unittest
 from unittest.mock import patch
 from argparse import Namespace
 from pathlib import Path
@@ -9,6 +9,14 @@ spec = importlib.util.spec_from_loader(loader.name, loader)
 cli = importlib.util.module_from_spec(spec); loader.exec_module(cli)
 
 class Inputs(unittest.TestCase):
+    def test_stage3b_database_paths_load_from_user_config(self):
+        with tempfile.TemporaryDirectory() as d:
+            config=Path(d)/"microsags/paths.env"; config.parent.mkdir()
+            config.write_text("CHECKM2DB=/db/checkm2.dmnd\nGTDBTK_DATA_PATH=/db/gtdbtk\n")
+            with patch.dict(os.environ,{"XDG_CONFIG_HOME":d},clear=False):
+                values=cli.configured_paths()
+            self.assertEqual(values["CHECKM2DB"],"/db/checkm2.dmnd")
+            self.assertEqual(values["GTDBTK_DATA_PATH"],"/db/gtdbtk")
     def test_sketch_mode_has_standard_database_builder_options(self):
         args=cli.make_parser().parse_args(["sketch","references","-x","taxonomy.csv","-o","database","-t","8"])
         self.assertEqual(args.command,"sketch")

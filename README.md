@@ -33,11 +33,9 @@ Assembly is the next step and accepts contigs only. If annotation used reads,
 assemble every SAG independently first and preserve the same SAG identifiers.
 
 ```bash
-microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output/annotations.tsv \
-  -o assembly_output \
-  --checkm2-database checkm2_database \
-  --gtdbtk-data gtdbtk_database
+microsags assemble SAG_contigs/ \
+  -a annotation_output/annotations.tsv \
+  -o assembly_output
 ```
 
 Labelled SAGs enter Stage 3A. Unclassified SAGs enter Stage 3B. Both retain the
@@ -46,11 +44,9 @@ existing `cpp-subass`/Flye subassembly workflow.
 To override only the Stage 3B Leiden resolution:
 
 ```bash
-microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output/annotations.tsv \
+microsags assemble SAG_contigs/ \
+  -a annotation_output/annotations.tsv \
   -o assembly_output \
-  --checkm2-database checkm2_database \
-  --gtdbtk-data gtdbtk_database \
   --leiden-resolution 0.18
 ```
 

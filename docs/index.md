@@ -21,11 +21,9 @@ Assembly mode is the next step. It accepts one contig FASTA per SAG and a
 completed Annotation-mode output directory.
 
 ```bash
-microsags assemble --input-type contigs SAG_contigs/ \
-  --annotations annotation_output/annotations.tsv \
-  -o assembly_output \
-  --checkm2-database checkm2_database \
-  --gtdbtk-data gtdbtk_database
+microsags assemble SAG_contigs/ \
+  -a annotation_output/annotations.tsv \
+  -o assembly_output
 ```
 
 Labelled SAGs enter Stage 3A; unclassified SAGs enter Stage 3B. Both routes use
