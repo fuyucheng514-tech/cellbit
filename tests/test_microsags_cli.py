@@ -25,4 +25,15 @@ class Inputs(unittest.TestCase):
             a.write_text("@x\nA\n+\nI\n"); b.write_text("@x\nT\n+\nI\n")
             n=Namespace(inputs=[],file_list=None,reads1=str(a),reads2=str(b),r1_list=None,r2_list=None)
             self.assertEqual(cli.rows(n)[1][0][0],"sample")
+    def test_generic_scaffolds_uses_parent_sag_id(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/"SAG_007"/"scaffolds.fasta"; p.parent.mkdir(); p.write_text(">x\nA\n")
+            self.assertEqual(cli.sag_id(p),"SAG_007")
+    def test_directory_input_discovers_sags(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)/"SAGs"
+            for name in ("A","B"):
+                p=root/name/"scaffolds.fasta"; p.parent.mkdir(parents=True); p.write_text(">x\nA\n")
+            a=Namespace(file_list=None,inputs=[str(root)])
+            self.assertEqual([cli.sag_id(p) for p in cli.fasta_paths(a)],["A","B"])
 if __name__ == "__main__": unittest.main()

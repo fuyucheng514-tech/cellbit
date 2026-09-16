@@ -29,6 +29,8 @@ def stem(path, suffixes):
 
 def sag_id(path):
     value = stem(path, FASTA)
+    if value.lower() in {"scaffolds", "contigs", "assembly", "consensus"}:
+        value = path.parent.name
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", value): raise Error(f"unsafe SAG filename: {path.name}")
     return value
 
@@ -45,7 +47,19 @@ def list_paths(value):
 
 def fasta_paths(args):
     if args.file_list and args.inputs: raise Error("FASTA arguments and --file-list are mutually exclusive")
-    paths = list_paths(args.file_list) if args.file_list else [file(p) for p in args.inputs]
+    if args.file_list:
+        paths = list_paths(args.file_list)
+    else:
+        paths = []
+        for value in args.inputs:
+            candidate = Path(value).expanduser().resolve()
+            if candidate.is_dir():
+                found = sorted((p for p in candidate.rglob("*") if p.is_file() and any(
+                    p.name.lower().removesuffix(".gz").endswith(s) for s in FASTA)), key=lambda p: str(p).encode())
+                if not found: raise Error(f"directory contains no FASTA files: {candidate}")
+                paths.extend(found)
+            else:
+                paths.append(file(candidate))
     if not paths: raise Error("provide FASTA files or -l/--file-list")
     ids = [sag_id(p) for p in paths]
     if len(ids) != len(set(ids)): raise Error("duplicate SAG IDs after filename normalization")
@@ -149,7 +163,7 @@ def sketch(args):
         print(f"incomplete work retained: {work}",file=sys.stderr); raise
 
 def add_inputs(p, reads):
-    p.add_argument("inputs",nargs="*",metavar="FASTA",help="one FASTA per SAG; shell globs supported")
+    p.add_argument("inputs",nargs="*",metavar="FASTA",help="FASTA files or a directory containing one FASTA per SAG")
     p.add_argument("-l","--file-list",metavar="FILE",help="one FASTA path per line")
     if reads:
         p.add_argument("-1","--reads1",metavar="FASTQ",help="R1 FASTQ for one unassembled SAG")
