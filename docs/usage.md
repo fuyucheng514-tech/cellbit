@@ -47,8 +47,16 @@ microsags assemble SAGs/ -d database -o full_output
 Use this command when you only need a species label for each eligible SAG and
 do not want Microsags to construct Stage 3A bins:
 
+Paired reads:
+
 ```bash
-microsags annotate SAGs/ -d database -o annotation_output
+microsags annotate --input-type reads SAGs/ -d database -o annotation_output
+```
+
+Assembled contigs:
+
+```bash
+microsags annotate --input-type contigs SAGs/ -d database -o annotation_output
 ```
 
 The command accepts either paired reads or existing contigs in one invocation.
