@@ -19,9 +19,8 @@ builds the C++17 sources and installs Microsags into the active environment.
 Subsequent commands are invoked directly, for example:
 
 ```bash
-microsags annotate examples/SAGs/*.fna \
-  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
-  --output output --threads 8
+microsags annotate --input-type contigs examples/SAGs/ \
+  -d database -o annotation_output --threads 8
 ```
 
 ## Install from the GitHub release
@@ -56,9 +55,7 @@ microsags --help
 Large scientific databases are deliberately not stored in GitHub or inside the
 Conda environment. Before a scientific run, provide:
 
-- the GTDB R232 taxonomy table with `--dna-tax`;
-- the matching, pre-built embedded packed DNA2bit index with
-  `--dna-packed-db`;
+- the matching Microsags DNA2bit database with `-d database` in Annotation;
 - CheckM2 and GTDB-Tk databases only when the optional Stage 3B preparation or
   final quality evaluation is used.
 

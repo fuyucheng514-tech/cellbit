@@ -1,8 +1,12 @@
 # Stage 3B advanced workflow
 
-Stage 3B clusters DNA2bit-negative SAGs. In v0.2 the public `assemble` command
-automatically runs its upstream evidence preparation, graph clustering and
-subassembly chain. The page documents the advanced scientific boundary.
+Stage 3B clusters DNA2bit-negative SAGs. The public `assemble` command imports
+the completed Annotation result, then runs evidence preparation, graph
+clustering and subassembly. It does not rerun DNA2bit.
+
+The Leiden resolution can be overridden with
+`--leiden-resolution FLOAT`. When this option is omitted, Microsags uses the
+frozen default parameter sweep. All other scientific rules remain unchanged.
 
 ## Required inputs
 

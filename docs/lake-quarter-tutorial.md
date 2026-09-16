@@ -36,16 +36,23 @@ python examples/lake_quarter/select_quarter.py \
   --receipt lake_contigs_quarter.receipt.json
 ```
 
-## Run the contig route
+## Run the sequential contig route
 
 ```bash
 cut -f2 lake_contigs_quarter.tsv | tail -n +2 > lake_contigs_quarter.paths.txt
 
+microsags annotate \
+  --file-list lake_contigs_quarter.paths.txt \
+  --input-type contigs \
+  -d database \
+  -o lake_quarter_annotation \
+  --threads 128
+
 microsags assemble \
   --file-list lake_contigs_quarter.paths.txt \
   --input-type contigs \
-  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
-  --output lake_quarter_output \
+  --annotations lake_quarter_annotation \
+  -o lake_quarter_assembly \
   --threads 128 \
   --checkm2-database /data/CheckM2/uniref100.KO.1.dmnd \
   --gtdbtk-data /data/GTDBTK/r232
@@ -58,8 +65,10 @@ FASTA content detection
   → preserve existing contigs
   → total assembly length >= 1,000 bp
   → embedded DNA2bit sketch and packed search
+  → write accepted labels and the unclassified-SAG hand-off
+  → Assembly imports that annotation result without rerunning DNA2bit
   → accepted labels to Stage 3A
-  → rejected/no-hit SAGs to the Stage 3B hand-off manifest
+  → rejected/no-hit SAGs to Stage 3B
 ```
 
 The completed integration run is retained under a write-once server directory:
@@ -109,14 +118,15 @@ uncontrolled shared-filesystem measurement, not a strict cold-cache benchmark.
 ## Inspect the result
 
 ```bash
-python -m json.tool lake_quarter_output/COMPLETE.json
-column -t -s $'\t' lake_quarter_output/TIMING.tsv
-head lake_quarter_output/INPUT_AUDIT.tsv
-head lake_quarter_output/02_dna2bit/labels.tsv
-head lake_quarter_output/03A_subassemble/groups.tsv
-head lake_quarter_output/03B_unclassified_pending.tsv
+python -m json.tool lake_quarter_annotation/COMPLETE.json
+head lake_quarter_annotation/02_dna2bit/labels.tsv
+head lake_quarter_annotation/03B_unclassified_pending.tsv
+python -m json.tool lake_quarter_assembly/COMPLETE.json
+head lake_quarter_assembly/03A_subassemble/groups.tsv
 ```
 
 These measurements describe the recorded Stage 1-3A checkpoint and must not be
-presented as Stage 3B timing. A current `assemble` run continues through Stage
-3B and produces its own receipts under `stage3b/`.
+presented as Stage 3B timing. In the current interface, Annotation and Assembly
+are separate sequential commands. The historical measurements above validate
+the scientific checkpoint, while a new `assemble --annotations ...` run writes
+its own Stage 3B receipts under `stage3b/`.
