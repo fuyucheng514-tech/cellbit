@@ -94,6 +94,21 @@ microsags --help</code></pre>
         <p>Large databases are not included in the GitHub release. Copy the template below and fill in absolute paths on the target machine.</p>
         <pre><code>cp config/paths.env.example config/paths.env
 # edit MICROSAGS_DNA_TAX and MICROSAGS_DNA_PACKED_DB</code></pre>
+        <h2 id="install-build-database">Build a database for a new GTDB release</h2>
+        <p>If GTDB is updated, build a compatible packed database directly from the new reference genomes and taxonomy table:</p>
+        <pre><code>microsags sketch references/ -x taxonomy.csv -o database -t 32</code></pre>
+        <p><code>references/</code> contains one GTDB genome FASTA per accession. Every filename must contain its versioned <code>GCA_...</code> or <code>GCF_...</code> accession. <code>taxonomy.csv</code> maps every accession to its GTDB taxonomy.</p>
+        <pre><code>references/
+├── GCF_000001405.40_genomic.fna.gz
+├── GCA_000002285.5_genomic.fna.gz
+└── ...
+
+taxonomy.csv
+GCF_000001405.40,d__Bacteria;p__...;c__...;o__...;f__...;g__...;s__...
+GCA_000002285.5,d__Bacteria;p__...;c__...;o__...;f__...;g__...;s__...</code></pre>
+        <p>The taxonomy file has no header. Its accession set must match the reference FASTA set exactly.</p>
+        <p>The command validates the inputs, generates reference sketches in parallel, packs them, binds and checks the taxonomy, and writes <code>COMPLETE.json</code> with SHA-256 receipts. The output is write-once: an existing database is never overwritten, and an incomplete build cannot be used for annotation.</p>
+        <pre><code>microsags annotate SAGs/ -d database -o annotation_output</code></pre>
         <p>Microsags is not yet published in Bioconda, so install it using this repository's <code>environment.yml</code> and <code>install.sh</code>.</p>
         <table><thead><tr><th>Artifact</th><th>Where it is recorded</th></tr></thead><tbody>
           <tr><td>Source and binaries</td><td>Release archive and SHA256SUMS.txt</td></tr>

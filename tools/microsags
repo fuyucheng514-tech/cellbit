@@ -2,6 +2,7 @@
 """Microsags public CLI (v0.3.0)."""
 from __future__ import annotations
 import argparse, csv, os, re, shutil, subprocess, sys, tempfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 VERSION = "0.3.0"
@@ -344,7 +345,14 @@ def sketch(args):
         if not re.search(r"GC[AF]_\d+\.\d+",ref.name): raise Error(f"reference name lacks GCA/GCF accession: {ref.name}")
     work=out.parent/f".{out.name}.sketch-incomplete-{os.getpid()}"; bits=work/"bits"; bits.mkdir(parents=True)
     try:
-        for ref in refs: run([exe("dna2bit-embedded-sketch"),ref,bits/f"{ref.name}.k.17.l.55296.bit"])
+        sketcher=exe("dna2bit-embedded-sketch")
+        def build_one(ref):
+            run([sketcher,ref,bits/f"{ref.name}.k.17.l.55296.bit"])
+        with ThreadPoolExecutor(max_workers=min(args.threads,len(refs))) as pool:
+            futures={pool.submit(build_one,ref):ref for ref in refs}
+            for future in as_completed(futures):
+                try: future.result()
+                except Exception as error: raise Error(f"reference sketch failed: {futures[future]}") from error
         run([exe("dna2bit-pack-builder"),"--database",str(bits)+os.sep,"--index",out,"--taxonomy",taxonomy,"--expected-row-bytes","6912"])
         if args.separate_files: shutil.move(bits,out/"separate_bits")
         shutil.rmtree(work)
@@ -369,6 +377,7 @@ def make_parser():
     s=subs.add_parser("sketch",help="build a packed DNA2bit reference database"); add_inputs(s,False)
     s.add_argument("-x","--taxonomy",required=True,metavar="CSV",help="accession-to-taxonomy CSV")
     s.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once database directory")
+    s.add_argument("-t","--threads",type=int,default=os.cpu_count() or 1,metavar="INT",help="parallel reference sketch workers (default: detected CPUs)")
     s.add_argument("--separate-files",action="store_true",help="retain individual DNA2bit sketch files")
     q=subs.add_parser("annotate",help="quality-control reads and annotate SAGs with DNA2bit")
     add_inputs(q,True)

@@ -9,6 +9,13 @@ spec = importlib.util.spec_from_loader(loader.name, loader)
 cli = importlib.util.module_from_spec(spec); loader.exec_module(cli)
 
 class Inputs(unittest.TestCase):
+    def test_sketch_mode_has_standard_database_builder_options(self):
+        args=cli.make_parser().parse_args(["sketch","references","-x","taxonomy.csv","-o","database","-t","8"])
+        self.assertEqual(args.command,"sketch")
+        self.assertEqual(args.inputs,["references"])
+        self.assertEqual(args.taxonomy,"taxonomy.csv")
+        self.assertEqual(args.output,"database")
+        self.assertEqual(args.threads,8)
     def test_fasta_basename_ids(self):
         with tempfile.TemporaryDirectory() as d:
             ps=[Path(d)/"SAG_A.fna",Path(d)/"SAG-B.fa.gz"]

@@ -67,6 +67,53 @@ sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
 
+## Build a database for a new GTDB release
+
+If GTDB is updated, users can build a compatible database directly from the
+new reference genomes and taxonomy table:
+
+```bash
+microsags sketch references/ -x taxonomy.csv -o database -t 32
+```
+
+`references/` must contain one GTDB genome FASTA per accession. Each filename
+must contain its versioned `GCA_...` or `GCF_...` accession. `taxonomy.csv`
+must map every reference accession to its GTDB taxonomy.
+
+For example:
+
+```text
+references/
+├── GCF_000001405.40_genomic.fna.gz
+├── GCA_000002285.5_genomic.fna.gz
+└── ...
+```
+
+```text
+GCF_000001405.40,d__Bacteria;p__...;c__...;o__...;f__...;g__...;s__...
+GCA_000002285.5,d__Bacteria;p__...;c__...;o__...;f__...;g__...;s__...
+```
+
+The taxonomy file has no header: column 1 is the versioned accession and
+column 2 is its semicolon-delimited GTDB taxonomy. The accession set must match
+the FASTA set exactly.
+
+The command performs four steps automatically:
+
+1. discover and validate the reference FASTA files;
+2. generate DNA2bit sketches in parallel;
+3. pack the sketches and bind them to the taxonomy table;
+4. validate the one-to-one reference/taxonomy closure and write
+   `COMPLETE.json` plus SHA-256 receipts.
+
+The output is write-once. An existing `database/` is never overwritten. If the
+command fails, the incomplete working directory is retained for diagnosis and
+is not accepted by annotation mode. A completed database can be used directly:
+
+```bash
+microsags annotate SAGs/ -d database -o annotation_output
+```
+
 ## Package-manager status
 
 Microsags is not yet published as a Bioconda package. Therefore

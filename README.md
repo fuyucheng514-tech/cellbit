@@ -64,8 +64,15 @@ successful publication.
 ## Build a database
 
 ```bash
-microsags sketch references/ -x taxonomy.csv -o database
+microsags sketch references/ -x taxonomy.csv -o database -t 32
 ```
+
+This mode is intended for a new GTDB release. `references/` contains one GTDB
+genome FASTA per accession and `taxonomy.csv` maps those accessions to GTDB
+taxonomy. Microsags sketches the references, builds the packed database,
+validates that every reference has taxonomy, and writes a `COMPLETE.json`
+receipt. The output directory is write-once and can be passed directly to
+`microsags annotate -d database`.
 
 ## Documentation
 
