@@ -19,7 +19,11 @@ Example input with one R1/R2 pair per SAG:
 ```text
 SAGs/
 ├── SAG_0001_R1.fastq.gz
-└── SAG_0001_R2.fastq.gz
+├── SAG_0001_R2.fastq.gz
+├── SAG_0002_R1.fastq.gz
+├── SAG_0002_R2.fastq.gz
+├── SAG_0003_R1.fastq.gz
+└── SAG_0003_R2.fastq.gz
 ```
 
 FASTQ input is processed with fastp and SPAdes before annotation.
@@ -34,7 +38,9 @@ Example input with one single-end FASTQ file per SAG:
 
 ```text
 SAGs/
-└── SAG_0001.fastq.gz
+├── SAG_0001.fastq.gz
+├── SAG_0002.fastq.gz
+└── SAG_0003.fastq.gz
 ```
 
 Singleton input is processed with fastp and SPAdes single-end mode before
@@ -50,7 +56,9 @@ Example input with one FASTA file per SAG:
 
 ```text
 SAGs/
-└── SAG_0001.fna
+├── SAG_0001.fna
+├── SAG_0002.fna
+└── SAG_0003.fna
 ```
 
 A SAG FASTA may contain multiple contigs:
@@ -96,7 +104,11 @@ Example input with one R1/R2 pair per SAG:
 ```text
 SAGs/
 ├── SAG_0001_R1.fastq.gz
-└── SAG_0001_R2.fastq.gz
+├── SAG_0001_R2.fastq.gz
+├── SAG_0002_R1.fastq.gz
+├── SAG_0002_R2.fastq.gz
+├── SAG_0003_R1.fastq.gz
+└── SAG_0003_R2.fastq.gz
 ```
 
 FASTQ input is processed with fastp and SPAdes before annotation and assembly.
@@ -113,7 +125,9 @@ Example input with one single-end FASTQ file per SAG:
 
 ```text
 SAGs/
-└── SAG_0001.fastq.gz
+├── SAG_0001.fastq.gz
+├── SAG_0002.fastq.gz
+└── SAG_0003.fastq.gz
 ```
 
 Singleton input is processed with fastp and SPAdes single-end mode before
@@ -131,7 +145,9 @@ Example input with one FASTA file per SAG:
 
 ```text
 SAGs/
-└── SAG_0001.fna
+├── SAG_0001.fna
+├── SAG_0002.fna
+└── SAG_0003.fna
 ```
 
 Contig input skips fastp and SPAdes.
