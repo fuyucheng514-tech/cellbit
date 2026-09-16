@@ -23,7 +23,8 @@ SAGs/
 ├── SAG_0002_R1.fastq.gz
 ├── SAG_0002_R2.fastq.gz
 ├── SAG_0003_R1.fastq.gz
-└── SAG_0003_R2.fastq.gz
+├── SAG_0003_R2.fastq.gz
+└── ...
 ```
 
 FASTQ input is processed with fastp and SPAdes before annotation.
@@ -40,7 +41,8 @@ Example input with one single-end FASTQ file per SAG:
 SAGs/
 ├── SAG_0001.fastq.gz
 ├── SAG_0002.fastq.gz
-└── SAG_0003.fastq.gz
+├── SAG_0003.fastq.gz
+└── ...
 ```
 
 Singleton input is processed with fastp and SPAdes single-end mode before
@@ -58,7 +60,8 @@ Example input with one FASTA file per SAG:
 SAGs/
 ├── SAG_0001.fna
 ├── SAG_0002.fna
-└── SAG_0003.fna
+├── SAG_0003.fna
+└── ...
 ```
 
 A SAG FASTA may contain multiple contigs:
@@ -86,6 +89,24 @@ Main outputs:
 - `03B_unclassified_pending.tsv`: rejected or no-hit SAGs;
 - `COMPLETE.json`: completion status.
 
+Example output:
+
+```text
+annotation_output/
+├── 01_assembly/
+│   ├── SAG_0001/
+│   ├── SAG_0002/
+│   └── ...
+├── 02_dna2bit/
+│   ├── bits/
+│   ├── search_result.csv
+│   └── labels.tsv
+├── 03B_unclassified_pending.tsv
+├── INPUT_AUDIT.tsv
+├── TIMING.tsv
+└── COMPLETE.json
+```
+
 ## Assembly mode
 
 Assembly mode runs DNA2bit annotation followed by Stage 3A assembly of
@@ -108,7 +129,8 @@ SAGs/
 ├── SAG_0002_R1.fastq.gz
 ├── SAG_0002_R2.fastq.gz
 ├── SAG_0003_R1.fastq.gz
-└── SAG_0003_R2.fastq.gz
+├── SAG_0003_R2.fastq.gz
+└── ...
 ```
 
 FASTQ input is processed with fastp and SPAdes before annotation and assembly.
@@ -127,7 +149,8 @@ Example input with one single-end FASTQ file per SAG:
 SAGs/
 ├── SAG_0001.fastq.gz
 ├── SAG_0002.fastq.gz
-└── SAG_0003.fastq.gz
+├── SAG_0003.fastq.gz
+└── ...
 ```
 
 Singleton input is processed with fastp and SPAdes single-end mode before
@@ -147,7 +170,8 @@ Example input with one FASTA file per SAG:
 SAGs/
 ├── SAG_0001.fna
 ├── SAG_0002.fna
-└── SAG_0003.fna
+├── SAG_0003.fna
+└── ...
 ```
 
 Contig input skips fastp and SPAdes.
@@ -159,6 +183,28 @@ Main outputs:
 - `stage3b/`: Stage 3B clustering and assemblies;
 - `TIMING.tsv`: stage wall-clock times;
 - `COMPLETE.json`: final completion status.
+
+Example output:
+
+```text
+assembly_output/
+├── 01_assembly/
+├── 02_dna2bit/
+│   └── labels.tsv
+├── 03A_subassemble/
+│   ├── groups.tsv
+│   ├── species_group_1/run/assembly.fasta
+│   └── ...
+├── 03B_unclassified_pending.tsv
+├── stage3b/
+│   ├── input/
+│   ├── stats/
+│   ├── upstream/
+│   ├── evidence/
+│   └── result/
+├── TIMING.tsv
+└── COMPLETE.json
+```
 
 ## Common options
 
