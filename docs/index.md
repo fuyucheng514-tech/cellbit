@@ -1,40 +1,51 @@
 # Microsags
 
-Microsags is a Linux command-line workflow for single-amplified genome (SAG)
-species annotation and species-guided subassembly. It accepts assembled SAG
-contigs or paired short reads as direct paths, directories, or path lists. The
-route can be selected explicitly with `--input-type`; otherwise the public CLI
-infers it from standard FASTA/FASTQ filename suffixes and the C++ reader still
-validates the actual decompressed records before any scientific processing.
+Microsags is a command-line tool for species annotation and assembly of
+single-amplified genomes (SAGs). It accepts assembled FASTA files or paired
+FASTQ reads and automatically selects the correct route.
 
-The v0.2 public CLI provides `sketch`, `annotate`, and `assemble`. The complete
-`assemble` workflow performs five auditable operations:
+## Main commands
 
-1. validate and route every SAG input;
-2. assemble paired reads with fastp and SPAdes, while preserving supplied
-   contigs without reassembly;
-3. classify eligible SAGs with the embedded, teacher-compatible DNA2bit
-   `k=17` packed search;
-4. subassemble DNA2bit-labelled SAGs by species in Stage 3A;
-5. process DNA2bit-negative SAGs through the Stage 3B evidence, graph-clustering
-   and subassembly chain.
+### Species annotation
 
-`annotate` stops after operation 3. `assemble` runs both Stage 3A and Stage 3B;
-the CheckM2 and GTDB-Tk resources required by Stage 3B remain external.
+```bash
+microsags annotate SAGs/ -d database -o annotation_output
+```
 
-## Start here
+This produces DNA2bit species annotations and stops before SAG aggregation.
 
-- [Install](install.md) describes Conda/Mamba and source builds.
-- [Usage examples](usage.md) explains the input routes and functional outputs.
-- [Lake quarter tutorial](lake-quarter-tutorial.md) records a reproducible
-  3,436-SAG integration example.
-- [Output reference](outputs.md) defines the files emitted by each stage.
+### Complete assembly
 
-## Scope and scientific identity
+```bash
+microsags assemble SAGs/ -d database -o assembly_output \
+  --checkm2-database checkm2_database \
+  --gtdbtk-data gtdbtk_database
+```
 
-Microsags embeds the compatible C++ implementation of the original DNA2bit
-sketch and packed-search semantics. It does not use Cellbit57 ALC, Top16,
-skani-based GTDB classification, or a trained Cellbit57 model. Mature external
-algorithms such as fastp, SPAdes and Flye remain declared, versioned
-dependencies; orchestration and scientific receipts do not rename those tools
-as native Microsags algorithms.
+This runs annotation followed by Stage 3A and Stage 3B.
+
+### Build a database
+
+```bash
+microsags sketch references/ -x taxonomy.csv -o database
+```
+
+## Input
+
+For assembled SAGs, put one `.fa`, `.fasta` or `.fna` file per SAG in
+`SAGs/`. For reads, put paired `_R1` and `_R2` FASTQ files in the directory.
+Gzip-compressed files are supported.
+
+Use `-i contigs` or `-i reads` to select the route explicitly. If omitted,
+Microsags detects the input type from standard filenames and validates the
+sequence contents.
+
+## Output
+
+- `02_dna2bit/labels.tsv`: species annotations;
+- `03A_subassemble/`: Stage 3A assemblies;
+- `stage3b/`: Stage 3B results;
+- `TIMING.tsv`: stage timings;
+- `COMPLETE.json`: completion status.
+
+Continue with [Install](install.md) or [Usage](usage.md).

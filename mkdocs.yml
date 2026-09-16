@@ -13,10 +13,7 @@ theme:
 nav:
   - Home: index.md
   - Install: install.md
-  - Usage examples: usage.md
-  - Lake quarter tutorial: lake-quarter-tutorial.md
-  - Output reference: outputs.md
-  - Stage 3B advanced workflow: stage3b.md
+  - Usage: usage.md
 
 exclude_docs: |
   index.html
@@ -32,4 +29,3 @@ markdown_extensions:
       permalink: true
 
 strict: true
-
