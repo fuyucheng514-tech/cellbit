@@ -1,6 +1,6 @@
 # Install
 
-Microsags v0.1 supports Linux x86-64. The recommended installation uses
+Microsags v0.2 supports Linux x86-64. The recommended installation uses
 [Pixi](https://pixi.sh/) to create an isolated environment from conda-forge and
 Bioconda. The checked-in `pixi.lock` freezes the resolved Linux package set.
 
@@ -26,19 +26,19 @@ Run any installed command through Pixi:
 
 ```bash
 pixi run microsags --help
-pixi run sag-stage3b-tractor --help
+pixi run microsags annotate --help
+pixi run microsags assemble --help
 ```
 
-## Install from the GitHub release
+## Install the current source without Git
 
 This route does not require Git:
 
 ```bash
-wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.1.0/Microsags-v0.1.0-source.tar.gz
-echo "97f5b6893dfb21ac6b9a58525de4c802abeb9693eaa18dd38c18f5a631f7ba8e  Microsags-v0.1.0-source.tar.gz" | sha256sum -c -
-mkdir Microsags-v0.1.0-source
-tar -xzf Microsags-v0.1.0-source.tar.gz -C Microsags-v0.1.0-source
-cd Microsags-v0.1.0-source
+wget https://github.com/fuyucheng514-tech/cellbit/archive/refs/heads/main.tar.gz -O Microsags-main.tar.gz
+mkdir Microsags-main
+tar -xzf Microsags-main.tar.gz -C Microsags-main --strip-components=1
+cd Microsags-main
 pixi install --frozen
 pixi run install
 pixi run verify
@@ -99,16 +99,16 @@ a14eff367239fdcfa539b98d36eb46d24cd4388f98c07b5e5c2689fd996d0a31
 Point Microsags at the extracted directory:
 
 ```bash
-export MICROSAGS_DNA_PACKED_DB="$HOME/microsags-data/dna2bit_gtdb232_packed_v1"
-export MICROSAGS_DNA_TAX="$MICROSAGS_DNA_PACKED_DB/genome_taxonomy.csv"
+export MICROSAGS_DB="$HOME/microsags-data/dna2bit_gtdb232_packed_v1"
+pixi run microsags annotate SAGs/ -d "$MICROSAGS_DB" -o annotation_output
 ```
 
 The packed index receipt binds its taxonomy and reference-manifest checksums.
 Microsags fails closed when the database is missing or mismatched.
 
-Stage 3B additionally requires caller-generated CheckM2 quality evidence and a
-bac120 marker table. CheckM2 and GTDB-Tk databases are external data resources,
-not part of the Microsags source installation.
+Stage 3B is launched by `microsags assemble`. CheckM2 and GTDB-Tk databases are
+external data resources and must be supplied with `--checkm2-database` and
+`--gtdbtk-data` (or their documented environment variables).
 
 ## Package-manager status
 

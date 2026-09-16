@@ -2,21 +2,23 @@
 
 Microsags is a Linux command-line workflow for single-amplified genome (SAG)
 species annotation and species-guided subassembly. It accepts assembled SAG
-contigs or paired short reads through the same manifest and determines the input
-route from sequence content rather than filename extensions.
+contigs or paired short reads as direct paths, directories, or path lists and
+determines the input route from sequence content rather than filename extensions.
 
-The default v0.1 workflow performs four auditable operations:
+The v0.2 public CLI provides `sketch`, `annotate`, and `assemble`. The complete
+`assemble` workflow performs five auditable operations:
 
 1. validate and route every SAG input;
 2. assemble paired reads with fastp and SPAdes, while preserving supplied
    contigs without reassembly;
 3. classify eligible SAGs with the embedded, teacher-compatible DNA2bit
    `k=17` packed search;
-4. subassemble DNA2bit-labelled SAGs by species in Stage 3A.
+4. subassemble DNA2bit-labelled SAGs by species in Stage 3A;
+5. process DNA2bit-negative SAGs through the Stage 3B evidence, graph-clustering
+   and subassembly chain.
 
-DNA2bit-negative SAGs are written to a stable hand-off manifest. Stage 3B is
-available as a separate advanced executable and is not represented as part of
-the one-command stable workflow.
+`annotate` stops after operation 3. `assemble` runs both Stage 3A and Stage 3B;
+the CheckM2 and GTDB-Tk resources required by Stage 3B remain external.
 
 ## Start here
 
@@ -34,4 +36,3 @@ skani-based GTDB classification, or a trained Cellbit57 model. Mature external
 algorithms such as fastp, SPAdes and Flye remain declared, versioned
 dependencies; orchestration and scientific receipts do not rename those tools
 as native Microsags algorithms.
-

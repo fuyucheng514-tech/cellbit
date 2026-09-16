@@ -1,6 +1,6 @@
 # Lake quarter tutorial
 
-This integration example applies the public Microsags v0.1 release to a
+This integration example applies Microsags to a
 deterministic quarter of the 13,742-SAG lake contig collection. It tests
 realistic scale and output contracts. The underlying biological data are not
 redistributed through GitHub.
@@ -39,13 +39,15 @@ python examples/lake_quarter/select_quarter.py \
 ## Run the contig route
 
 ```bash
-pixi run microsags \
-  --manifest lake_contigs_quarter.tsv \
-  --out lake_quarter_output \
-  --dna-tax /data/GTDB232/genome_taxonomy_1.csv \
-  --dna-packed-db /data/GTDB232/dna2bit-packed-index \
+cut -f2 lake_contigs_quarter.tsv | tail -n +2 > lake_contigs_quarter.paths.txt
+
+pixi run microsags assemble \
+  --file-list lake_contigs_quarter.paths.txt \
+  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
+  --output lake_quarter_output \
   --threads 128 \
-  --memory-gb 1024
+  --checkm2-database /data/CheckM2/uniref100.KO.1.dmnd \
+  --gtdbtk-data /data/GTDBTK/r232
 ```
 
 Because every selected input is FASTA, the expected route is:
@@ -68,7 +70,7 @@ The completed integration run is retained under a write-once server directory:
 
 ## Verified result
 
-The public v0.1 Release completed with exit status 0. `COMPLETE.json`, all 156
+The recorded Stage 1-3A checkpoint completed with exit status 0. `COMPLETE.json`, all 156
 Stage 3A group receipts and all 156 non-empty bin FASTA files closed
 successfully.
 
@@ -114,5 +116,6 @@ head lake_quarter_output/03A_subassemble/groups.tsv
 head lake_quarter_output/03B_unclassified_pending.tsv
 ```
 
-The example validates the contig entrance, annotation contract and Stage 3A.
-It does not claim Stage 3B completion merely because a pending manifest exists.
+These measurements describe the recorded Stage 1-3A checkpoint and must not be
+presented as Stage 3B timing. A current `assemble` run continues through Stage
+3B and produces its own receipts under `stage3b/`.

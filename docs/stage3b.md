@@ -1,8 +1,8 @@
 # Stage 3B advanced workflow
 
-Stage 3B clusters DNA2bit-negative SAGs. In v0.1 it is deliberately separated
-from the stable main command because it requires independently generated
-quality and marker evidence and uses an experimental bundled ANI/AF estimator.
+Stage 3B clusters DNA2bit-negative SAGs. In v0.2 the public `assemble` command
+automatically runs its upstream evidence preparation, graph clustering and
+subassembly chain. The page documents the advanced scientific boundary.
 
 ## Required inputs
 
@@ -23,4 +23,3 @@ quality and marker evidence and uses an experimental bundled ANI/AF estimator.
 
 See [`README_STAGE3B.md`](https://github.com/fuyucheng514-tech/cellbit/blob/main/README_STAGE3B.md)
 for the frozen command contract and current validation boundary.
-
