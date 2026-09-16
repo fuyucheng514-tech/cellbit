@@ -27,7 +27,7 @@
 
 namespace fs = std::filesystem;
 
-enum class InputKind { paired_reads, contigs };
+enum class InputKind { paired_reads, singleton_reads, contigs };
 enum class SequenceFormat { fasta, fastq };
 
 static fs::path environment_path(const char* name) {
@@ -346,7 +346,8 @@ static bool is_manifest_header(const std::vector<std::string>& columns) {
   if (columns.empty() || lower(columns[0]) != "sag_id") return false;
   if (columns.size() == 2) {
     const std::string second = lower(columns[1]);
-    return second == "assembly_fasta" || second == "contigs" || second == "input";
+    return second == "assembly_fasta" || second == "contigs" || second == "input" ||
+           second == "singleton_fastq" || second == "singleton" || second == "fastq";
   }
   if (columns.size() != 3) return false;
   const std::string second = lower(columns[1]);
@@ -380,11 +381,7 @@ static std::vector<Sag> read_manifest(const fs::path& manifest) {
     const auto format1 = detect_sequence_format(sag.source1);
 
     if (columns.size() == 2) {
-      if (format1 != SequenceFormat::fasta) {
-        throw std::runtime_error("manifest line " + std::to_string(line_number) +
-                                 " has one FASTQ input; paired reads require both R1 and R2 columns");
-      }
-      sag.input_kind = InputKind::contigs;
+      sag.input_kind = format1 == SequenceFormat::fasta ? InputKind::contigs : InputKind::singleton_reads;
     } else {
       sag.source2 = resolve_manifest_path(manifest, columns[2]);
       const auto format2 = detect_sequence_format(sag.source2);
@@ -435,8 +432,9 @@ static Config parse(int argc, char** argv) {
       std::cout << "dna2bit-sag-pipeline --manifest SAGs.tsv --out DIR [options]\n\n"
                 << "Input is detected from file contents, not filename extensions:\n"
                 << "  SAG_ID<TAB>R1<TAB>R2       paired FASTQ; run fastp -> SPAdes -> >=1000-bp gate\n"
+                << "  SAG_ID<TAB>reads.fastq     singleton FASTQ; run fastp -> SPAdes -s -> >=1000-bp gate\n"
                 << "  SAG_ID<TAB>contigs.fasta   FASTA; skip fastp/SPAdes -> >=1000-bp gate\n"
-                << "A matching optional header (sag_id/r1/r2 or sag_id/assembly_fasta) is accepted.\n\n"
+                << "A matching optional header is accepted.\n\n"
                 << "Search engine is embedded teacher-compatible packed search:\n"
                 << "  --dna-search-engine packed --dna-packed-db INDEX_DIR\n\n"
                 << "Workflow endpoint:\n"
@@ -670,7 +668,9 @@ static void run_embedded_sketches(const std::vector<EmbeddedSketchTask>& tasks,
 }
 
 static const char* input_kind_name(InputKind kind) {
-  return kind == InputKind::paired_reads ? "paired_reads" : "contigs";
+  if (kind == InputKind::paired_reads) return "paired_reads";
+  if (kind == InputKind::singleton_reads) return "singleton_reads";
+  return "contigs";
 }
 
 int main(int argc, char** argv) try {
@@ -695,6 +695,7 @@ int main(int argc, char** argv) try {
   fs::create_directories(config.out);
 
   std::size_t read_inputs = 0;
+  std::size_t singleton_inputs = 0;
   std::size_t contig_inputs = 0;
   for (auto& sag : sags) {
     const auto directory = config.out / "01_assembly" / sag.id;
@@ -702,21 +703,25 @@ int main(int argc, char** argv) try {
     fs::create_directories(clean);
     sag.assembly = directory / (sag.id + ".fasta");
 
-    if (sag.input_kind == InputKind::paired_reads) {
-      ++read_inputs;
+    if (sag.input_kind == InputKind::paired_reads || sag.input_kind == InputKind::singleton_reads) {
+      if (sag.input_kind == InputKind::paired_reads) ++read_inputs;
+      else ++singleton_inputs;
       sag.clean_r1 = clean / "R1.fastq.gz";
-      sag.clean_r2 = clean / "R2.fastq.gz";
+      if (sag.input_kind == InputKind::paired_reads) sag.clean_r2 = clean / "R2.fastq.gz";
       const auto stage_pass = directory / "STAGE1.PASS";
       const auto spades_assembly = directory / "spades" / "scaffolds.fasta";
       if (!(config.resume && fs::exists(stage_pass))) {
-        const std::string qc = q(config.fastp) + " -i " + q(sag.source1) + " -I " + q(sag.source2) +
-                               " -o " + q(sag.clean_r1) + " -O " + q(sag.clean_r2) + " --thread " +
-                               std::to_string(std::min(config.threads, 16)) + " --json " +
-                               q(directory / "fastp.json") + " --html " + q(directory / "fastp.html");
+        std::string qc = q(config.fastp) + " -i " + q(sag.source1) + " -o " + q(sag.clean_r1);
+        if (sag.input_kind == InputKind::paired_reads) qc += " -I " + q(sag.source2) + " -O " + q(sag.clean_r2);
+        qc += " --thread " + std::to_string(std::min(config.threads, 16)) + " --json " +
+              q(directory / "fastp.json") + " --html " + q(directory / "fastp.html");
         run(qc, directory / "FASTP.PASS", config.dry);
-        const std::string spades = q(config.spades) + " --sc --careful -1 " + q(sag.clean_r1) + " -2 " +
-                                   q(sag.clean_r2) + " -o " + q(directory / "spades") + " -t " +
-                                   std::to_string(config.threads) + " -m " + std::to_string(config.memory_gb);
+        std::string spades = q(config.spades) + " --sc --careful ";
+        spades += sag.input_kind == InputKind::paired_reads
+                      ? "-1 " + q(sag.clean_r1) + " -2 " + q(sag.clean_r2)
+                      : "-s " + q(sag.clean_r1);
+        spades += " -o " + q(directory / "spades") + " -t " + std::to_string(config.threads) +
+                  " -m " + std::to_string(config.memory_gb);
         run(spades, stage_pass, config.dry);
       }
       if (!config.dry && !fs::exists(sag.assembly)) {
@@ -771,8 +776,8 @@ int main(int argc, char** argv) try {
     for (const auto& sag : sags) {
       audit << sag.id << '\t' << input_kind_name(sag.input_kind) << '\t' << sag.source1.string() << '\t'
             << (sag.source2.empty() ? "NA" : sag.source2.string()) << '\t'
-            << (sag.input_kind == InputKind::paired_reads ? "fastp" : "assembly_length_gate") << '\t'
-            << (sag.input_kind == InputKind::paired_reads ? "none" : "fastp,SPAdes") << '\t'
+            << (sag.input_kind != InputKind::contigs ? "fastp" : "assembly_length_gate") << '\t'
+            << (sag.input_kind != InputKind::contigs ? "none" : "fastp,SPAdes") << '\t'
             << sag.assembly.string() << '\t' << sag.assembly_bp << '\t'
             << (sag.assembly_bp >= 1000 ? "yes" : "no") << '\n';
     }
@@ -815,16 +820,22 @@ int main(int argc, char** argv) try {
     fs::create_directories(directory);
     if (config.resume && fs::exists(pass)) continue;
 
-    if (sag->input_kind == InputKind::paired_reads) {
+    if (sag->input_kind == InputKind::paired_reads || sag->input_kind == InputKind::singleton_reads) {
       ensure_symlink(sag->clean_r1, directory / "R1.fastq.gz");
-      ensure_symlink(sag->clean_r2, directory / "R2.fastq.gz");
+      if (sag->input_kind == InputKind::paired_reads) ensure_symlink(sag->clean_r2, directory / "R2.fastq.gz");
       const auto list = directory / "inputs.list";
       if (!config.dry) {
         std::ofstream output(list);
-        output << "R1.fastq.gz\nR2.fastq.gz\n";
+        output << "R1.fastq.gz\n";
+        if (sag->input_kind == InputKind::paired_reads) output << "R2.fastq.gz\n";
       }
-      sketch_tasks.push_back({{sag->clean_r1, sag->clean_r2},
-                              directory / "paired_reads.k.17.l.55296.bit", pass, sag->id});
+      std::vector<fs::path> sketch_inputs{sag->clean_r1};
+      if (sag->input_kind == InputKind::paired_reads) sketch_inputs.push_back(sag->clean_r2);
+      sketch_tasks.push_back({sketch_inputs,
+                              directory / (sag->input_kind == InputKind::paired_reads
+                                               ? "paired_reads.k.17.l.55296.bit"
+                                               : "singleton_reads.k.17.l.55296.bit"),
+                              pass, sag->id});
     } else {
       ensure_symlink(sag->assembly, directory / "input.fasta");
       const auto list = directory / "inputs.list";
@@ -889,7 +900,8 @@ int main(int argc, char** argv) try {
   }
 
   if (config.dry) {
-    std::cout << "DRY-RUN complete: auto-detected paired_reads=" << read_inputs << " contigs=" << contig_inputs
+    std::cout << "DRY-RUN complete: auto-detected paired_reads=" << read_inputs
+              << " singleton_reads=" << singleton_inputs << " contigs=" << contig_inputs
               << "; no scientific output written\n";
     return 0;
   }
@@ -968,10 +980,12 @@ int main(int argc, char** argv) try {
         << "{\"status\":\"PASS\",\"pipeline\":\"dna2bit-original-embedded-annotation-v1-auto-input\","
         << "\"workflow_endpoint\":\"annotation\",\"dna_search_engine\":\"" << config.dna_search_engine << "\","
         << "\"input_sags\":" << sags.size() << ",\"paired_read_inputs\":" << read_inputs
+        << ",\"singleton_read_inputs\":" << singleton_inputs
         << ",\"contig_inputs\":" << contig_inputs << ",\"eligible_sags\":" << eligible.size()
         << ",\"excluded_lt1000bp\":" << (sags.size() - eligible.size()) << ",\"labeled\":" << labeled.size()
         << ",\"pending\":" << (eligible.size() - labeled.size()) << "}\n";
     std::cout << "PASS annotation: input=" << sags.size() << " paired_reads=" << read_inputs
+              << " singleton_reads=" << singleton_inputs
               << " contigs=" << contig_inputs << " eligible=" << eligible.size()
               << " excluded_lt1000bp=" << (sags.size() - eligible.size())
               << " labeled=" << labeled.size() << " pending=" << (eligible.size() - labeled.size()) << "\n";
@@ -1076,10 +1090,12 @@ int main(int argc, char** argv) try {
       << "{\"status\":\"PASS\",\"pipeline\":\"dna2bit-original-embedded-stage1-3A-v1-auto-input\","
       << "\"dna_search_engine\":\"" << config.dna_search_engine << "\","
       << "\"input_sags\":" << sags.size() << ",\"paired_read_inputs\":" << read_inputs
+      << ",\"singleton_read_inputs\":" << singleton_inputs
       << ",\"contig_inputs\":" << contig_inputs << ",\"eligible_sags\":" << eligible.size()
       << ",\"excluded_lt1000bp\":" << (sags.size() - eligible.size()) << ",\"labeled\":" << labeled.size()
       << ",\"groups\":" << groups.size() << "}\n";
-  std::cout << "PASS: input=" << sags.size() << " paired_reads=" << read_inputs << " contigs=" << contig_inputs
+  std::cout << "PASS: input=" << sags.size() << " paired_reads=" << read_inputs
+            << " singleton_reads=" << singleton_inputs << " contigs=" << contig_inputs
             << " eligible=" << eligible.size() << " excluded_lt1000bp=" << (sags.size() - eligible.size())
             << " labeled=" << labeled.size() << " groups=" << groups.size() << "\n";
   return 0;

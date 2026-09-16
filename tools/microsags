@@ -72,6 +72,11 @@ def read_id(path, mate):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+", value): raise Error(f"cannot derive SAG ID: {path.name}")
     return value
 
+def singleton_id(path):
+    value = stem(path, FASTQ)
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+", value): raise Error(f"cannot derive SAG ID: {path.name}")
+    return value
+
 def input_kind(path):
     """Classify a sequence path by its user-facing filename suffix."""
     name = path.name.lower()
@@ -118,6 +123,7 @@ def rows(args):
     read_mode = any((args.reads1, args.reads2, args.r1_list, args.r2_list))
     requested=getattr(args,"input_type","auto")
     if requested=="fastq": requested="reads"
+    if requested=="singleton" and read_mode: raise Error("--input-type singleton uses sequence paths, a directory, or --file-list")
     if requested=="contigs" and read_mode: raise Error("--input-type contigs cannot be used with read-pair options")
     if not read_mode:
         ps=supplied_paths(args)
@@ -126,6 +132,11 @@ def rows(args):
         if requested=="auto":
             if len(kinds)!=1: raise Error("auto input detection found mixed reads and contigs; select one input type")
             requested=next(iter(kinds))
+        if requested=="singleton":
+            if kinds!={"reads"}: raise Error("--input-type singleton requires FASTQ inputs")
+            ids=[singleton_id(p) for p in ps]
+            if len(ids)!=len(set(ids)): raise Error("duplicate singleton SAG IDs after filename normalization")
+            return ["sag_id", "singleton_fastq"], [[singleton_id(p),str(p)] for p in ps]
         if kinds!={requested}: raise Error(f"--input-type {requested} conflicts with one or more filename suffixes")
         if requested=="contigs":
             ids=[sag_id(p) for p in ps]
@@ -228,7 +239,7 @@ def add_inputs(p, reads):
     p.add_argument("inputs",nargs="*",metavar="SEQUENCE",help="sequence files or a directory containing SAG inputs")
     p.add_argument("-l","--file-list",metavar="FILE",help="one sequence path per line")
     if reads:
-        p.add_argument("-i","--input-type",choices=("auto","fastq","contigs"),default="auto",
+        p.add_argument("-i","--input-type",choices=("auto","fastq","singleton","contigs"),default="auto",
                        help="input route (default: infer from .fq/.fastq/.fa/.fasta/.fna, optionally .gz)")
         p.add_argument("-1","--reads1",metavar="FASTQ",help="R1 FASTQ for one unassembled SAG")
         p.add_argument("-2","--reads2",metavar="FASTQ",help="R2 FASTQ for one unassembled SAG")

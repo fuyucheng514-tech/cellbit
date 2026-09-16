@@ -53,6 +53,14 @@ class Inputs(unittest.TestCase):
             a=Namespace(inputs=[str(root)],file_list=None,reads1=None,reads2=None,
                         r1_list=None,r2_list=None,input_type="fastq")
             self.assertEqual(cli.rows(a)[1][0][0],"SAG_A")
+    def test_singleton_fastq_input(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/"SAG_A.fastq.gz"; p.write_text("@x\nA\n+\nI\n")
+            a=Namespace(inputs=[str(p)],file_list=None,reads1=None,reads2=None,
+                        r1_list=None,r2_list=None,input_type="singleton")
+            header, data = cli.rows(a)
+            self.assertEqual(header,["sag_id","singleton_fastq"])
+            self.assertEqual(data[0][0],"SAG_A")
     def test_explicit_type_rejects_suffix_conflict(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"SAG_A.fna"; p.write_text(">x\nA\n")

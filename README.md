@@ -53,8 +53,8 @@ Build a DNA2bit database:
 microsags sketch references/ -x taxonomy.csv -o database
 ```
 
-Use `-t` to set the number of threads and `-i fastq` or `-i contigs` to force
-an input type. Without `-i`, Microsags recognizes `.fq`, `.fastq`, `.fa`,
+Use `-t` to set the number of threads and `-i fastq`, `-i singleton` or
+`-i contigs` to force an input type. Without `-i`, Microsags recognizes `.fq`, `.fastq`, `.fa`,
 `.fasta` and `.fna`, including gzip-compressed files.
 
 ## Input

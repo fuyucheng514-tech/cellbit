@@ -24,6 +24,22 @@ microsags annotate --input-type fastq SAGs/ -d database -o annotation_output
 
 FASTQ input is processed with fastp and SPAdes before annotation.
 
+### Singleton FASTQ reads
+
+Place one single-end FASTQ file per SAG in the input directory:
+
+```text
+SAGs/
+└── SAG_0001.fastq.gz
+```
+
+```bash
+microsags annotate --input-type singleton SAGs/ -d database -o annotation_output
+```
+
+Singleton input is processed with fastp and SPAdes single-end mode before
+annotation.
+
 ### Assembled contigs
 
 Place one FASTA file per SAG in the input directory:
@@ -85,6 +101,24 @@ microsags assemble --input-type fastq SAGs/ -d database -o assembly_output \
 
 FASTQ input is processed with fastp and SPAdes before annotation and assembly.
 
+### Singleton FASTQ reads
+
+Place one single-end FASTQ file per SAG in the input directory:
+
+```text
+SAGs/
+└── SAG_0001.fastq.gz
+```
+
+```bash
+microsags assemble --input-type singleton SAGs/ -d database -o assembly_output \
+  --checkm2-database checkm2_database \
+  --gtdbtk-data gtdbtk_database
+```
+
+Singleton input is processed with fastp and SPAdes single-end mode before
+annotation and assembly.
+
 ### Assembled contigs
 
 Place one FASTA file per SAG in the input directory:
@@ -114,7 +148,7 @@ Main outputs:
 
 | Option | Meaning |
 |---|---|
-| `-i, --input-type` | `auto`, `fastq` or `contigs` |
+| `-i, --input-type` | `auto`, `fastq`, `singleton` or `contigs` |
 | `-d, --database` | DNA2bit database directory |
 | `-o, --output` | New output directory |
 | `-t, --threads` | Number of worker threads |
