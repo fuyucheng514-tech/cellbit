@@ -1,29 +1,25 @@
-# Stage 3B advanced workflow
+# Adjust Leiden clustering
 
-Stage 3B clusters DNA2bit-negative SAGs. The public `assemble` command imports
-the completed Annotation result, then runs evidence preparation, graph
-clustering and subassembly. It does not rerun DNA2bit.
+Leiden controls how the DNA2bit-unclassified SAGs are divided into Stage 3B
+clusters before subassembly. Most users can keep the default setting.
 
-The Leiden resolution can be overridden with
-`--leiden-resolution FLOAT`. When this option is omitted, Microsags uses the
-frozen default parameter sweep. All other scientific rules remain unchanged.
+Use `--leiden-resolution` only when you want to change the cluster granularity:
 
-## Required inputs
+- a lower value usually produces fewer, larger clusters;
+- a higher value usually produces more, smaller clusters;
+- changing this value can change both cluster membership and the resulting
+  Stage 3B assemblies.
 
-- `03B_unclassified_pending.tsv` from the stable Microsags run;
-- a quality manifest containing `sag_id`, `max_contig`, `gc_pct` and
-  `checkm2_contamination`;
-- a bac120 nucleotide marker map generated from the same SAG assemblies;
-- explicit paths to the ANI engine, Leiden backend and C++ subassembly driver.
+For example, set the resolution to `0.18` with:
 
-## Main products
+```bash
+microsags assemble SAG_contigs/ \
+  -a annotation_output/annotations.tsv \
+  -o assembly_output \
+  --leiden-resolution 0.18
+```
 
-- quality-gate audit and graph-node manifest;
-- all-pairs ANI/AF statistics and positive edges;
-- marker-derived negative-edge evidence;
-- signed Leiden membership and unaggregated SAG tables;
-- per-cluster merged FASTA, subassembly and PASS receipts;
-- a Stage 3B `COMPLETE.json` closure receipt.
-
-See [`README_STAGE3B.md`](https://github.com/fuyucheng514-tech/cellbit/blob/main/README_STAGE3B.md)
-for the frozen command contract and current validation boundary.
+Replace `0.18` with the value you want to test. The value must be greater than
+zero. If the option is omitted, Microsags uses its default Leiden parameter
+selection. This option changes Stage 3B clustering only; it does not change
+DNA2bit annotation or Stage 3A grouping.

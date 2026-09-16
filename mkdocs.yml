@@ -15,8 +15,8 @@ nav:
   - Install: install.md
   - Usage examples: usage.md
   - Lake quarter tutorial: lake-quarter-tutorial.md
-  - Output reference: outputs.md
-  - Stage 3B advanced workflow: stage3b.md
+  - Results and output files: outputs.md
+  - Adjust Leiden clustering: stage3b.md
 
 exclude_docs: |
   index.html

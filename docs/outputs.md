@@ -1,4 +1,4 @@
-# Output reference
+# Results and output files
 
 Microsags publishes a deliberately small result surface. Intermediate files
 are written to a sibling work directory. Failed work is retained for diagnosis;
