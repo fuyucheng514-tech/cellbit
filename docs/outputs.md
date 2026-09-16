@@ -4,6 +4,25 @@ Microsags publishes a deliberately small result surface. Intermediate files
 are written to a sibling work directory. Failed work is retained for diagnosis;
 successful work is removed after the final files have been published.
 
+## Database build mode
+
+```text
+database/
+├── references.pack
+├── references.tsv
+├── genome_taxonomy.csv
+├── references.pack.sha256
+├── references.tsv.sha256
+├── genome_taxonomy.csv.sha256
+└── COMPLETE.json
+```
+
+`references.pack` is the packed DNA2bit reference matrix. `references.tsv`
+records its deterministic reference order, and `genome_taxonomy.csv` is the
+exact taxonomy table bound to that matrix. The SHA-256 files protect each
+component. Annotation accepts the database only when `COMPLETE.json` records a
+successful, closed build.
+
 ## Annotation mode
 
 ```text

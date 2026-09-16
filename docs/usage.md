@@ -1,6 +1,6 @@
 # Usage examples
 
-Microsags has two consecutive modes. Run **Annotation mode** first. If genome
+Microsags has two consecutive analysis modes. Run **Annotation mode** first. If genome
 assembly is required, prepare one contig FASTA per SAG and then run
 **Assembly mode** with the completed annotation directory.
 

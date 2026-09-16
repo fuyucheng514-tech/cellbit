@@ -119,7 +119,7 @@ GCA_000002285.5,d__Bacteria;p__...;c__...;o__...;f__...;g__...;s__...</code></pr
 
       <article class="doc-page" data-page="usage" data-title="Usage examples">
         <h1>Usage examples</h1>
-        <p class="lead">Microsags has two sequential modes: annotate first, then assemble.</p>
+        <p class="lead">Microsags has two sequential analysis modes: annotate first, then assemble. Sketch is the database-maintenance mode.</p>
         <h2 id="usage-help">Check the installed command</h2>
         <pre><code>microsags --help</code></pre>
         <h2 id="usage-annotation">Annotation mode</h2>
@@ -200,15 +200,36 @@ SAG_0001&lt;TAB&gt;/absolute/path/SAG_0001_R1.fastq.gz&lt;TAB&gt;/absolute/path/
       <article class="doc-page" data-page="output" data-title="Output and reproducibility">
         <h1>Output and reproducibility</h1>
         <p class="lead">Only concise scientific results are published in the requested output directory.</p>
+        <h2 id="output-database">Database build output</h2>
+        <pre><code>database/
+├── references.pack
+├── references.tsv
+├── genome_taxonomy.csv
+├── references.pack.sha256
+├── references.tsv.sha256
+├── genome_taxonomy.csv.sha256
+└── COMPLETE.json</code></pre>
+        <p>The packed reference matrix, deterministic reference inventory and taxonomy are checksum-bound. Annotation accepts the database only after a successful <code>COMPLETE.json</code> receipt.</p>
         <h2 id="output-annotation">Annotation output</h2>
         <pre><code>annotation_output/
 └── annotations.tsv</code></pre>
+        <pre><code>sag_id	species
+SAG_0001	Polynucleobacter_sp...
+SAG_0002	UNCLASSIFIED</code></pre>
         <h2 id="output-assembly">Assembly output</h2>
         <pre><code>assembly_output/
 ├── stage3a.tsv
 ├── stage3a/&lt;species&gt;.fasta
 ├── stage3b_clusters.tsv
 └── stage3b/&lt;group_id&gt;.fasta</code></pre>
+        <pre><code>stage3a.tsv
+species	assembly_fasta
+Polynucleobacter_sp...	stage3a/Polynucleobacter_sp....fasta
+
+stage3b_clusters.tsv
+group_id	sag_id
+G0001	SAG_0002
+G0001	SAG_0017</code></pre>
         <p>Intermediate work is kept outside the result directory if a run fails and is removed after successful publication.</p>
       </article>
 

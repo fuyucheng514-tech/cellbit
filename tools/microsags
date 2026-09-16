@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Microsags public CLI (v0.3.0)."""
+"""Microsags public CLI (v0.4.0)."""
 from __future__ import annotations
 import argparse, csv, os, re, shutil, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 FASTA = (".fasta", ".fna", ".fa", ".fas")
 FASTQ = (".fastq", ".fq")
 
