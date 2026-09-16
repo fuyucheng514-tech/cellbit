@@ -1,33 +1,31 @@
 # Install
 
-Microsags v0.2 supports Linux x86-64. The recommended installation uses
-[Pixi](https://pixi.sh/) to create an isolated environment from conda-forge and
-Bioconda. The checked-in `pixi.lock` freezes the resolved Linux package set.
+Microsags v0.2 supports Linux x86-64. The recommended installation uses Conda
+or Mamba to create an isolated environment from conda-forge and Bioconda.
 
-## Install with Pixi
+## Install with Conda or Mamba
 
-Install Pixi using its official instructions, then clone Microsags:
+Clone Microsags, create the environment and install the program:
 
 ```bash
 git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
 cd Microsags
 
-pixi install --frozen
-pixi run install
-pixi run verify
+conda env create -f environment.yml
+conda activate microsags
+PREFIX="$CONDA_PREFIX" JOBS=8 bash install.sh
+microsags --help
 ```
 
-`pixi install --frozen` installs the compiler and runtime dependencies without
-changing `pixi.lock`. `pixi run install` builds the C++17 programs and installs
-them inside the project environment. `pixi run verify` checks the public
-`microsags` command.
+`environment.yml` installs the compiler and runtime dependencies. `install.sh`
+builds the C++17 programs and installs them into the active environment.
 
-Run any installed command through Pixi:
+Run installed commands directly:
 
 ```bash
-pixi run microsags --help
-pixi run microsags annotate --help
-pixi run microsags assemble --help
+microsags --help
+microsags annotate --help
+microsags assemble --help
 ```
 
 ## Install the current source without Git
@@ -39,17 +37,6 @@ wget https://github.com/fuyucheng514-tech/cellbit/archive/refs/heads/main.tar.gz
 mkdir Microsags-main
 tar -xzf Microsags-main.tar.gz -C Microsags-main --strip-components=1
 cd Microsags-main
-pixi install --frozen
-pixi run install
-pixi run verify
-```
-
-## Install with Conda
-
-```bash
-git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
-cd Microsags
-
 conda env create -f environment.yml
 conda activate microsags
 PREFIX="$CONDA_PREFIX" JOBS=8 bash install.sh
@@ -100,7 +87,7 @@ Point Microsags at the extracted directory:
 
 ```bash
 export MICROSAGS_DB="$HOME/microsags-data/dna2bit_gtdb232_packed_v1"
-pixi run microsags annotate --input-type contigs SAGs/ -d "$MICROSAGS_DB" -o annotation_output
+microsags annotate --input-type contigs SAGs/ -d "$MICROSAGS_DB" -o annotation_output
 ```
 
 The packed index receipt binds its taxonomy and reference-manifest checksums.
@@ -113,6 +100,5 @@ external data resources and must be supplied with `--checkm2-database` and
 ## Package-manager status
 
 Microsags is not yet published as a Bioconda package. Therefore
-`conda install -c bioconda microsags` and `pixi global install microsags` are
-not currently supported. Pixi installs the locked dependencies and builds the
-checked-out source repository.
+`conda install -c bioconda microsags` is not currently supported. Use the
+checked-in `environment.yml` and `install.sh` instead.

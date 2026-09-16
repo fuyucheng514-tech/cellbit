@@ -64,30 +64,25 @@
         <h2 id="home-install">Install</h2>
         <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
 cd Microsags
-pixi install
-pixi run install
-pixi run microsags --help</code></pre>
+conda env create -f environment.yml
+conda activate microsags
+PREFIX="$CONDA_PREFIX" JOBS=8 bash install.sh
+microsags --help</code></pre>
         <h2 id="home-next">Next steps</h2>
         <p>Start with <a href="#install">Install</a>, then follow <a href="#usage">Usage examples</a>. Sections whose production contract has not yet been published are intentionally left as placeholders.</p>
       </article>
 
       <article class="doc-page" data-page="install" data-title="Install">
         <h1>Install</h1>
-        <p class="lead">Microsags currently supports Linux x86-64. Pixi is the recommended installer and resolves packages from conda-forge and Bioconda.</p>
-        <h2 id="install-pixi">Install with pixi (recommended)</h2>
-        <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
-cd Microsags
-pixi install
-pixi run install
-pixi run microsags --help</code></pre>
-        <p>This installs an isolated compiler and runtime environment, builds the C++17 sources, and exposes the <code>microsags</code> command through <code>pixi run</code>.</p>
-        <h2 id="install-conda">Install with conda</h2>
+        <p class="lead">Microsags currently supports Linux x86-64. Conda or Mamba resolves its packages from conda-forge and Bioconda.</p>
+        <h2 id="install-conda">Install with Conda or Mamba</h2>
         <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
 cd Microsags
 conda env create -f environment.yml
 conda activate microsags
 PREFIX="$CONDA_PREFIX" JOBS=8 bash install.sh
 microsags --help</code></pre>
+        <p>This installs an isolated compiler and runtime environment, builds the C++17 sources, and exposes the <code>microsags</code> command directly in the activated environment.</p>
         <h2 id="install-source">Build from source</h2>
         <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
 cd Microsags
@@ -99,7 +94,7 @@ microsags --help</code></pre>
         <p>Large databases are not included in the GitHub release. Copy the template below and fill in absolute paths on the target machine.</p>
         <pre><code>cp config/paths.env.example config/paths.env
 # edit MICROSAGS_DNA_TAX and MICROSAGS_DNA_PACKED_DB</code></pre>
-        <p>Microsags is not yet published in Bioconda, so <code>pixi global install microsags</code> and <code>conda install -c bioconda microsags</code> are intentionally not advertised yet.</p>
+        <p>Microsags is not yet published in Bioconda, so install it using this repository's <code>environment.yml</code> and <code>install.sh</code>.</p>
         <table><thead><tr><th>Artifact</th><th>Where it is recorded</th></tr></thead><tbody>
           <tr><td>Source and binaries</td><td>Release archive and SHA256SUMS.txt</td></tr>
           <tr><td>Database paths</td><td>config/paths.env</td></tr>
@@ -111,7 +106,7 @@ microsags --help</code></pre>
         <h1>Usage examples</h1>
         <p class="lead">The examples page follows the short-command style used by SemiBin. Only the confirmed entry points are shown here.</p>
         <h2 id="usage-help">Check the installed command</h2>
-        <pre><code>pixi run microsags --help</code></pre>
+        <pre><code>microsags --help</code></pre>
         <h2 id="usage-contigs">Contigs input</h2>
         <p>Provide a two-column tab-separated manifest with <code>sag_id</code> and <code>contigs</code>. The exact production runner and output contract are documented in the release-specific files.</p>
         <pre><code>sag_id&lt;TAB&gt;contigs

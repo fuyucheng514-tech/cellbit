@@ -33,13 +33,13 @@ duplicate normalized SAG identifiers fail closed.
 
 ```bash
 # Explicit existing-contig route
-pixi run microsags annotate --input-type contigs SAGs/ -d DB -o annotations
+microsags annotate --input-type contigs SAGs/ -d DB -o annotations
 
 # Explicit paired-read route; a directory may contain many R1/R2 pairs
-pixi run microsags assemble --input-type reads SAG_reads/ -d DB -o full_output
+microsags assemble --input-type reads SAG_reads/ -d DB -o full_output
 
 # Automatic route selection from standard suffixes
-pixi run microsags assemble SAGs/ -d DB -o full_output
+microsags assemble SAGs/ -d DB -o full_output
 ```
 
 ## Command 1: species annotation only
@@ -48,7 +48,7 @@ Use this command when you only need a species label for each eligible SAG and
 do not want Microsags to construct Stage 3A bins:
 
 ```bash
-pixi run microsags annotate SAGs/*.fna \
+microsags annotate SAGs/*.fna \
   --input-type contigs \
   --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
   --output annotation_output \
@@ -67,7 +67,7 @@ It stops after the original DNA2bit acceptance rule has produced:
 ## Command 2: annotation plus Stage 3A and Stage 3B
 
 ```bash
-pixi run microsags assemble SAGs/*.fna \
+microsags assemble SAGs/*.fna \
   --input-type contigs \
   --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
   --output full_output \

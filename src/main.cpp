@@ -462,7 +462,7 @@ static Config parse(int argc, char** argv) {
     throw std::runtime_error("taxonomy requires --dna-tax or MICROSAGS_DNA_TAX");
   }
   if (!config.stop_after_annotation && config.flye_root.empty()) {
-    throw std::runtime_error("Flye runtime requires --flye-root, MICROSAGS_FLYE_ROOT, or an active conda/pixi environment");
+    throw std::runtime_error("Flye runtime requires --flye-root, MICROSAGS_FLYE_ROOT, or an active Conda environment");
   }
   return config;
 }

@@ -24,7 +24,7 @@ the CheckM2 and GTDB-Tk resources required by Stage 3B remain external.
 
 ## Start here
 
-- [Install](install.md) describes Pixi, Conda and source builds.
+- [Install](install.md) describes Conda/Mamba and source builds.
 - [Usage examples](usage.md) explains the input routes and functional outputs.
 - [Lake quarter tutorial](lake-quarter-tutorial.md) records a reproducible
   3,436-SAG integration example.

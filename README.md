@@ -57,18 +57,19 @@ SAG_ID<TAB>/absolute/assembly.fasta[.gz]
 公共CLI默认根据标准扩展名选择入口，也可用 `--input-type` 强制指定；底层仍以解压后的
 FASTA/FASTQ结构做最终验证。相对路径按manifest所在目录解析。
 
-## 安装（推荐 pixi）
+## 安装（Conda/Mamba）
 
 ```bash
 git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
 cd Microsags
-pixi install
-pixi run install
-pixi run microsags --help
+conda env create -f environment.yml
+conda activate microsags
+PREFIX="$CONDA_PREFIX" JOBS=8 bash install.sh
+microsags --help
 ```
 
-pixi 会从 conda-forge 和 Bioconda 建立隔离环境，并安装编译器、HTSlib、fastp、
-SPAdes、Flye、BLAST+、python-igraph 和 leidenalg。完整的 pixi、conda 与源码安装说明见
+Conda/Mamba会从conda-forge和Bioconda建立隔离环境，并安装编译器、HTSlib、fastp、
+SPAdes、Flye、BLAST+、python-igraph和leidenalg。完整安装与源码构建说明见
 [INSTALL.md](INSTALL.md)。大型科学数据库不包含在源码仓库中。
 
 网站式文档见 [`docs/index.md`](docs/index.md)，包括独立的
@@ -80,7 +81,7 @@ SPAdes、Flye、BLAST+、python-igraph 和 leidenalg。完整的 pixi、conda �
 ## 运行
 
 ```bash
-pixi run microsags annotate SAGs/*.fna \
+microsags annotate SAGs/*.fna \
   --input-type contigs \
   --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
   --output annotation_output --threads 48
