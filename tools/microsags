@@ -110,6 +110,10 @@ def helper(name):
         if p.is_file(): return p
     raise Error(f"Stage 3B helper missing: {name}")
 
+def flye_root():
+    """Return the Flye installation prefix expected by the embedded runner."""
+    return Path(exe("flye")).resolve().parent.parent
+
 def pipeline(args, manifest, annotation):
     db = Path(args.database).expanduser().resolve()
     for name in ("references.pack", "references.tsv", "genome_taxonomy.csv"): file(db/name)
@@ -118,7 +122,8 @@ def pipeline(args, manifest, annotation):
     cmd = [exe("dna2bit-sag-pipeline"), "--manifest", manifest, "--out", out,
            "--threads", args.threads, "--memory-gb", memory_gb(), "--dna-tax", db/"genome_taxonomy.csv",
            "--dna-search-engine", "packed", "--dna-packed-db", db]
-    cmd += ["--stop-after", "annotation"] if annotation else ["--subass", exe("cpp-subass")]
+    cmd += (["--stop-after", "annotation"] if annotation else
+            ["--subass", exe("cpp-subass"), "--flye-root", flye_root()])
     run(cmd)
 
 def stage3b(args):
@@ -137,7 +142,7 @@ def stage3b(args):
     env=os.environ.copy(); env["GTDBTK_DATA_PATH"]=str(Path(gdb).resolve())
     run([gtdbtk,"identify","--genome_dir",view/"input_fna","--out_dir",upstream/"gtdbtk","-x","fna","--cpus",args.threads,"--force","--write_single_copy_genes"], env)
     run([sys.executable,helper("finalize_stage3b_upstream.py"),"--pending",pending,"--stats",stats/"STAGE3B_FASTA_STATS.tsv","--input-view",view,"--checkm2-report",upstream/"checkm2/quality_report.tsv","--identify-root",upstream/"gtdbtk","--out-dir",evidence])
-    run([exe("sag-stage3b-tractor"),"--manifest",pending,"--quality-manifest",evidence/"stage3b_quality.tsv","--marker-map",evidence/"bac120_marker_nt_map.tsv","--ani-engine",exe("gtdb-ani-af"),"--allow-experimental-ani-engine","--makeblastdb",exe("makeblastdb"),"--blastn",exe("blastn"),"--python",sys.executable,"--leiden-backend",helper("stage3b_signed_leiden.py"),"--subass",exe("cpp-subass"),"--flye-root",Path(exe("flye")).resolve().parent.parent,"--threads",args.threads,"--out",result])
+    run([exe("sag-stage3b-tractor"),"--manifest",pending,"--quality-manifest",evidence/"stage3b_quality.tsv","--marker-map",evidence/"bac120_marker_nt_map.tsv","--ani-engine",exe("gtdb-ani-af"),"--allow-experimental-ani-engine","--makeblastdb",exe("makeblastdb"),"--blastn",exe("blastn"),"--python",sys.executable,"--leiden-backend",helper("stage3b_signed_leiden.py"),"--subass",exe("cpp-subass"),"--flye-root",flye_root(),"--threads",args.threads,"--out",result])
 
 def annotate_assemble(args):
     header, data = rows(args); parent=Path(args.output).expanduser().resolve().parent; parent.mkdir(parents=True,exist_ok=True)

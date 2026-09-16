@@ -1,4 +1,5 @@
 import importlib.machinery, importlib.util, tempfile, unittest
+from unittest.mock import patch
 from argparse import Namespace
 from pathlib import Path
 
@@ -36,4 +37,19 @@ class Inputs(unittest.TestCase):
                 p=root/name/"scaffolds.fasta"; p.parent.mkdir(parents=True); p.write_text(">x\nA\n")
             a=Namespace(file_list=None,inputs=[str(root)])
             self.assertEqual([cli.sag_id(p) for p in cli.fasta_paths(a)],["A","B"])
+    def test_assemble_passes_flye_root(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d); db=root/"db"; db.mkdir()
+            for name in ("references.pack","references.tsv","genome_taxonomy.csv"):
+                (db/name).write_text("x\n")
+            args=Namespace(database=str(db),output=str(root/"out"),threads=2)
+            prefix=root/"microsags"
+            binaries={"dna2bit-sag-pipeline":str(prefix/"bin/dna2bit-sag-pipeline"),
+                      "cpp-subass":str(prefix/"bin/cpp-subass"),
+                      "flye":str(prefix/"bin/flye")}
+            with patch.object(cli,"exe",side_effect=lambda name:binaries[name]), \
+                 patch.object(cli,"run") as invoked:
+                cli.pipeline(args,root/"manifest.tsv",False)
+            command=invoked.call_args.args[0]
+            self.assertEqual(command[command.index("--flye-root")+1],prefix.resolve())
 if __name__ == "__main__": unittest.main()
