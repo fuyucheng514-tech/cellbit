@@ -83,6 +83,10 @@ SAGs/
 └── SAG_0001_R2.fastq.gz
 ```
 
+```bash
+microsags annotate --input-type fastq SAGs/ -d database -o annotation_output
+```
+
 For assembled contigs, place one FASTA file per SAG:
 
 ```text
@@ -100,14 +104,7 @@ ATGCGTACGTTAGCTAGCTAGCTGACTG...
 GCTTACGATCGATCGGATCGATGCA...
 ```
 
-Run annotation directly with the input directory and database directory.
-For paired reads:
-
-```bash
-microsags annotate --input-type reads SAGs/ -d database -o annotation_output
-```
-
-For assembled contigs:
+Run annotation directly on assembled contigs:
 
 ```bash
 microsags annotate --input-type contigs SAGs/ -d database -o annotation_output

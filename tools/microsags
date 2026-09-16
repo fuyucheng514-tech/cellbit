@@ -117,6 +117,7 @@ def pair_paths(paths):
 def rows(args):
     read_mode = any((args.reads1, args.reads2, args.r1_list, args.r2_list))
     requested=getattr(args,"input_type","auto")
+    if requested=="fastq": requested="reads"
     if requested=="contigs" and read_mode: raise Error("--input-type contigs cannot be used with read-pair options")
     if not read_mode:
         ps=supplied_paths(args)
@@ -131,7 +132,7 @@ def rows(args):
             if len(ids)!=len(set(ids)): raise Error("duplicate SAG IDs after filename normalization")
             return ["sag_id", "assembly_fasta"], [[sag_id(p),str(p)] for p in ps]
         return ["sag_id","r1","r2"],pair_paths(ps)
-    if requested=="contigs": raise Error("read-pair options require --input-type reads or auto")
+    if requested=="contigs": raise Error("read-pair options require --input-type fastq or auto")
     if args.inputs or args.file_list: raise Error("FASTA inputs cannot be mixed with reads")
     if args.reads1 or args.reads2:
         if not (args.reads1 and args.reads2) or args.r1_list or args.r2_list: raise Error("use -1 and -2 together")
@@ -227,7 +228,7 @@ def add_inputs(p, reads):
     p.add_argument("inputs",nargs="*",metavar="SEQUENCE",help="sequence files or a directory containing SAG inputs")
     p.add_argument("-l","--file-list",metavar="FILE",help="one sequence path per line")
     if reads:
-        p.add_argument("-i","--input-type",choices=("auto","reads","contigs"),default="auto",
+        p.add_argument("-i","--input-type",choices=("auto","fastq","contigs"),default="auto",
                        help="input route (default: infer from .fq/.fastq/.fa/.fasta/.fna, optionally .gz)")
         p.add_argument("-1","--reads1",metavar="FASTQ",help="R1 FASTQ for one unassembled SAG")
         p.add_argument("-2","--reads2",metavar="FASTQ",help="R2 FASTQ for one unassembled SAG")

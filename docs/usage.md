@@ -23,7 +23,7 @@ or:
 sag_id	assembly_fasta
 ```
 
-Use `-i/--input-type reads` or `-i/--input-type contigs` to select a route
+Use `-i/--input-type fastq` or `-i/--input-type contigs` to select a route
 explicitly. If the option is omitted, `--input-type auto` recognizes
 `.fq`, `.fastq`, `.fa`, `.fasta`, and `.fna`, with optional `.gz`. FASTQ files
 supplied through a directory or one combined `--file-list` are paired by their
@@ -33,7 +33,7 @@ duplicate normalized SAG identifiers fail closed.
 
 ```bash
 # Explicit paired-read route; a directory may contain many R1/R2 pairs
-microsags assemble --input-type reads SAG_reads/ -d database -o full_output
+microsags assemble --input-type fastq SAG_reads/ -d database -o full_output
 
 # Explicit existing-contig route
 microsags annotate --input-type contigs SAGs/ -d database -o annotations
@@ -50,7 +50,7 @@ do not want Microsags to construct Stage 3A bins:
 Paired reads:
 
 ```bash
-microsags annotate --input-type reads SAGs/ -d database -o annotation_output
+microsags annotate --input-type fastq SAGs/ -d database -o annotation_output
 ```
 
 Assembled contigs:

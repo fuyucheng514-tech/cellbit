@@ -45,6 +45,14 @@ class Inputs(unittest.TestCase):
             a=Namespace(inputs=[str(root)],file_list=None,reads1=None,reads2=None,
                         r1_list=None,r2_list=None,input_type="auto")
             self.assertEqual(cli.rows(a)[1][0][0],"SAG_A")
+    def test_fastq_input_type_alias(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)/"reads"; root.mkdir()
+            for name in ("SAG_A_R1.fastq","SAG_A_R2.fastq"):
+                (root/name).write_text("@x\nA\n+\nI\n")
+            a=Namespace(inputs=[str(root)],file_list=None,reads1=None,reads2=None,
+                        r1_list=None,r2_list=None,input_type="fastq")
+            self.assertEqual(cli.rows(a)[1][0][0],"SAG_A")
     def test_explicit_type_rejects_suffix_conflict(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"SAG_A.fna"; p.write_text(">x\nA\n")
