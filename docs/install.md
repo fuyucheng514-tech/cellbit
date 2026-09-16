@@ -75,6 +75,20 @@ sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
 
-The database is approximately 1.4 GB. It
-contains 199,923 GTDB232 reference sketches generated with `k=17`,
-`bit_len=55296` and `hash_type=0`.
+```bash
+export MICROSAGS_DB="$HOME/microsags-data/dna2bit_gtdb232_packed_v1"
+microsags annotate --input-type contigs SAGs/ -d "$MICROSAGS_DB" -o annotation_output
+```
+
+The packed index receipt binds its taxonomy and reference-manifest checksums.
+Microsags fails closed when the database is missing or mismatched.
+
+Stage 3B is launched by `microsags assemble`. CheckM2 and GTDB-Tk databases are
+external data resources and must be supplied with `--checkm2-database` and
+`--gtdbtk-data` (or their documented environment variables).
+
+## Package-manager status
+
+Microsags is not yet published as a Bioconda package. Therefore
+`conda install -c bioconda microsags` is not currently supported. Use the
+checked-in `environment.yml` and `install.sh` instead.
