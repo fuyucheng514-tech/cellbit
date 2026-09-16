@@ -60,7 +60,7 @@ cmake --install build --prefix "$HOME/.local"
 "$HOME/.local/bin/microsags" --help
 ```
 
-## Download the k=17 GTDB232 database
+## Download the database
 
 The source archive and the scientific database are separate Release assets.
 Download the frozen packed database once:
