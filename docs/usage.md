@@ -48,11 +48,7 @@ Use this command when you only need a species label for each eligible SAG and
 do not want Microsags to construct Stage 3A bins:
 
 ```bash
-microsags annotate SAGs/*.fna \
-  --input-type contigs \
-  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
-  --output annotation_output \
-  --threads 32
+microsags annotate SAGs/ -d database -o annotation_output
 ```
 
 The command accepts either paired reads or existing contigs in one invocation.
@@ -67,13 +63,9 @@ It stops after the original DNA2bit acceptance rule has produced:
 ## Command 2: annotation plus Stage 3A and Stage 3B
 
 ```bash
-microsags assemble SAGs/*.fna \
-  --input-type contigs \
-  --database /data/Microsags-GTDB232-DNA2bit-k17-packed-v1 \
-  --output full_output \
-  --threads 32 \
-  --checkm2-database /data/CheckM2/uniref100.KO.1.dmnd \
-  --gtdbtk-data /data/GTDBTK/r232
+microsags assemble SAGs/ -d database -o assembly_output \
+  --checkm2-database checkm2_database \
+  --gtdbtk-data gtdbtk_database
 ```
 
 This single command performs input preparation, DNA2bit annotation,
