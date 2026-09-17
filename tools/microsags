@@ -263,6 +263,8 @@ def stage3b(args):
     run(command)
 
 def _species_name(taxonomy, fallback):
+    taxonomy = taxonomy or ""
+    fallback = fallback or ""
     hits = re.findall(r"(?:^|;)s__([^;]+)", taxonomy)
     value = hits[-1].strip() if hits else fallback.strip()
     return value or "UNCLASSIFIED"

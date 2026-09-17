@@ -109,6 +109,12 @@ class Inputs(unittest.TestCase):
             self.assertEqual((root/"result/annotations.tsv").read_text(),
                              "sag_id\tspecies\nA\tSpecies_alpha\nB\tUNCLASSIFIED\n")
             self.assertEqual([p.name for p in (root/"result").iterdir()],["annotations.tsv"])
+    def test_species_name_accepts_missing_tsv_fields(self):
+        self.assertEqual(cli._species_name(None, None), "UNCLASSIFIED")
+        self.assertEqual(cli._species_name("", None), "UNCLASSIFIED")
+        self.assertEqual(cli._species_name(None, "Species_beta"), "Species_beta")
+        self.assertEqual(cli._species_name("d__Bacteria;s__Species_alpha", None),
+                         "Species_alpha")
     def test_two_column_annotations_rebuild_internal_handoff(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); table=root/"annotations.tsv"
