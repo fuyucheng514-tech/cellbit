@@ -1,6 +1,6 @@
 # Install
 
-Microsags v0.4 supports Linux x86-64. The recommended installation uses Conda
+Microsags v0.5.0 supports Linux x86-64. The recommended installation uses Conda
 or Mamba to create an isolated environment from conda-forge and Bioconda.
 
 ## Install with Conda or Mamba

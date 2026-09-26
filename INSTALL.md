@@ -23,19 +23,21 @@ microsags annotate --input-type contigs examples/SAGs/ \
   -d database -o annotation_output --threads 8
 ```
 
-## Install from the GitHub release
+## Install the v0.5.0 source without Git
 
 ```bash
-wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.1.0/Microsags-v0.1.0-source.tar.gz
-echo "97f5b6893dfb21ac6b9a58525de4c802abeb9693eaa18dd38c18f5a631f7ba8e  Microsags-v0.1.0-source.tar.gz" | sha256sum -c -
-mkdir Microsags-v0.1.0-source
-tar -xzf Microsags-v0.1.0-source.tar.gz -C Microsags-v0.1.0-source
-cd Microsags-v0.1.0-source
+wget https://github.com/fuyucheng514-tech/cellbit/archive/refs/tags/v0.5.0.tar.gz -O Microsags-v0.5.0-source.tar.gz
+mkdir Microsags-v0.5.0-source
+tar -xzf Microsags-v0.5.0-source.tar.gz -C Microsags-v0.5.0-source --strip-components=1
+cd Microsags-v0.5.0-source
 conda env create -f environment.yml
 conda activate microsags
 PREFIX="$CONDA_PREFIX" JOBS=8 bash install.sh
 microsags --help
 ```
+
+In v0.5.0, Annotation mode passes original FASTQ reads directly to the embedded
+DNA2bit engine. It does not install or invoke fastp.
 
 ## Build from source
 

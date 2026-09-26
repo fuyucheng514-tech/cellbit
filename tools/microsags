@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Microsags public CLI (v0.4.0)."""
+"""Microsags public CLI (v0.5.0)."""
 from __future__ import annotations
 import argparse, csv, os, re, shutil, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 FASTA = (".fasta", ".fna", ".fa", ".fas")
 FASTQ = (".fastq", ".fq")
 
@@ -41,8 +41,14 @@ def exe(name):
     if not found: raise Error(f"required executable not found: {name}")
     return found
 
+def absolute_path(value):
+    """Return an absolute path without dereferencing a user-visible symlink."""
+    return Path(os.path.abspath(os.fspath(Path(value).expanduser())))
+
 def file(value):
-    p = Path(value).expanduser().resolve()
+    # Validate through the filesystem while preserving the user-visible basename.
+    # Resolving symlinks here can collapse distinct SAG names onto one target name.
+    p = absolute_path(value)
     if not p.is_file() or not p.stat().st_size: raise Error(f"missing or empty file: {p}")
     return p
 
@@ -77,10 +83,16 @@ def fasta_paths(args):
     else:
         paths = []
         for value in args.inputs:
-            candidate = Path(value).expanduser().resolve()
+            candidate = absolute_path(value)
             if candidate.is_dir():
-                found = sorted((p for p in candidate.rglob("*") if p.is_file() and any(
-                    p.name.lower().removesuffix(".gz").endswith(s) for s in FASTA)), key=lambda p: str(p).encode())
+                found = []
+                for directory, directories, names in os.walk(candidate):
+                    directories.sort(key=os.fsencode)
+                    names.sort(key=os.fsencode)
+                    for name in names:
+                        p = Path(directory) / name
+                        if any(p.name.lower().removesuffix(".gz").endswith(s) for s in FASTA):
+                            found.append(p)
                 if not found: raise Error(f"directory contains no FASTA files: {candidate}")
                 paths.extend(found)
             else:
@@ -116,10 +128,15 @@ def supplied_paths(args):
         return list_paths(args.file_list)
     out=[]
     for value in args.inputs:
-        candidate=Path(value).expanduser().resolve()
+        candidate=absolute_path(value)
         if candidate.is_dir():
-            found=sorted((p for p in candidate.rglob("*") if p.is_file() and
-                          input_kind_or_none(p)),key=lambda p:str(p).encode())
+            found=[]
+            for directory,directories,names in os.walk(candidate):
+                directories.sort(key=os.fsencode)
+                names.sort(key=os.fsencode)
+                for name in names:
+                    p=Path(directory)/name
+                    if input_kind_or_none(p): found.append(p)
             if not found: raise Error(f"directory contains no FASTA/FASTQ files: {candidate}")
             out.extend(found)
         else: out.append(file(candidate))
@@ -263,10 +280,10 @@ def stage3b(args):
     run(command)
 
 def _species_name(taxonomy, fallback):
-    taxonomy = taxonomy or ""
-    fallback = fallback or ""
+    taxonomy = (taxonomy or "").replace("\r", "").strip()
+    fallback = (fallback or "").replace("\r", "").strip()
     hits = re.findall(r"(?:^|;)s__([^;]+)", taxonomy)
-    value = hits[-1].strip() if hits else fallback.strip()
+    value = hits[-1].strip() if hits else fallback
     return value or "UNCLASSIFIED"
 
 def _publish_annotations(work, destination, input_rows):
@@ -406,7 +423,7 @@ def make_parser():
     s.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once database directory")
     s.add_argument("-t","--threads",type=int,default=os.cpu_count() or 1,metavar="INT",help="parallel reference sketch workers (default: detected CPUs)")
     s.add_argument("--separate-files",action="store_true",help="retain individual DNA2bit sketch files")
-    q=subs.add_parser("annotate",help="quality-control reads and annotate SAGs with DNA2bit")
+    q=subs.add_parser("annotate",help="annotate SAG reads or contigs directly with DNA2bit")
     add_inputs(q,True)
     q.add_argument("-d","--database",required=True,metavar="DIR",help="packed Microsags DNA2bit database")
     q.add_argument("-o","--output",required=True,metavar="DIR",help="new write-once annotation directory")

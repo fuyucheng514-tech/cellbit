@@ -41,7 +41,7 @@ the run receipt.
 
 ## Runtime dependency boundary
 
-For a manifest containing only contig FASTA inputs, `src/main.cpp` skips fastp
+For a manifest containing only contig FASTA inputs, `src/main.cpp` skips read preprocessing
 and SPAdes.  The actual 1–3A runtime is:
 
 - the four project executables above (only `dna2bit-sag-pipeline` and

@@ -16,8 +16,8 @@ PREFIX="$CONDA_PREFIX" JOBS=8 bash install.sh
 ## Annotation mode
 
 Annotation accepts paired FASTQ, singleton FASTQ, or per-SAG contigs.
-FASTQ reads are quality-controlled with fastp and passed directly to DNA2bit;
-SPAdes is not run.
+Original FASTQ reads are passed directly to the embedded DNA2bit engine.
+No trimming, filtering, read correction, or SPAdes step is run.
 
 ```bash
 microsags annotate SAGs/ -d database -o annotation_output

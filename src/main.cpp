@@ -44,7 +44,7 @@ struct Sag {
   std::string id;
   InputKind input_kind = InputKind::paired_reads;
   fs::path source1, source2;
-  fs::path clean_r1, clean_r2, assembly, bit;
+  fs::path assembly, bit;
   std::string bit_search_token;
   std::uint64_t assembly_bp = 0;
   std::uint64_t assembly_max_contig = 0;
@@ -55,7 +55,6 @@ struct Sag {
 
 struct Config {
   fs::path manifest, out, annotations;
-  fs::path fastp = "fastp";
   fs::path dna_tax = environment_path("MICROSAGS_DNA_TAX");
   std::string dna_search_engine = "packed";
   fs::path dna_packed_db = environment_path("MICROSAGS_DNA_PACKED_DB");
@@ -280,64 +279,18 @@ static fs::path resolve_manifest_path(const fs::path& manifest, const std::strin
   return fs::weakly_canonical(path);
 }
 
-static bool valid_nucleotide_line(const std::string& line) {
-  bool saw_base = false;
-  for (unsigned char c : line) {
-    if (std::isspace(c)) continue;
-    if (!(std::isalpha(c) || c == '-' || c == '.' || c == '*')) return false;
-    saw_base = true;
-  }
-  return saw_base;
-}
-
 static SequenceFormat detect_sequence_format(const fs::path& path) {
-  SequenceLineReader reader(path);
-  std::string first;
-  while (reader.getline(first) && first.empty()) {}
-  if (first.size() >= 3 && static_cast<unsigned char>(first[0]) == 0xef &&
-      static_cast<unsigned char>(first[1]) == 0xbb && static_cast<unsigned char>(first[2]) == 0xbf) {
-    first.erase(0, 3);
+  std::string name = lower(path.filename().string());
+  if (name.size() > 3 && name.compare(name.size() - 3, 3, ".gz") == 0) {
+    name.resize(name.size() - 3);
   }
-  if (first.empty()) throw std::runtime_error("empty sequence file: " + path.string());
-
-  if (first[0] == '>') {
-    bool saw_sequence = false;
-    std::string line;
-    std::size_t inspected = 0;
-    while (inspected < 256 && reader.getline(line)) {
-      if (line.empty()) continue;
-      ++inspected;
-      if (line[0] == '>') continue;
-      if (!valid_nucleotide_line(line)) {
-        throw std::runtime_error("FASTA contains a non-nucleotide sequence line near the start: " + path.string());
-      }
-      saw_sequence = true;
-    }
-    if (!saw_sequence) throw std::runtime_error("FASTA has no sequence after its header: " + path.string());
+  const std::string extension = fs::path(name).extension().string();
+  if (extension == ".fastq" || extension == ".fq") return SequenceFormat::fastq;
+  if (extension == ".fasta" || extension == ".fna" || extension == ".fa" || extension == ".fas") {
     return SequenceFormat::fasta;
   }
-
-  if (first[0] == '@') {
-    std::string header = first;
-    for (int record = 0; record < 8; ++record) {
-      std::string sequence, plus, quality;
-      if (!reader.getline(sequence) || !reader.getline(plus) || !reader.getline(quality)) {
-        throw std::runtime_error("truncated FASTQ record: " + path.string());
-      }
-      if (header.empty() || header[0] != '@' || plus.empty() || plus[0] != '+' || sequence.empty() ||
-          sequence.size() != quality.size() || !valid_nucleotide_line(sequence)) {
-        throw std::runtime_error("invalid four-line FASTQ structure: " + path.string());
-      }
-      if (!reader.getline(header)) break;
-      if (header.empty() || header[0] != '@') {
-        throw std::runtime_error("invalid FASTQ header after record " + std::to_string(record + 1) + ": " +
-                                 path.string());
-      }
-    }
-    return SequenceFormat::fastq;
-  }
-
-  throw std::runtime_error("cannot identify sequence content as FASTA or FASTQ: " + path.string());
+  throw std::runtime_error("unsupported sequence filename extension: " + path.string() +
+                           " (accepted: .fastq/.fq/.fasta/.fna/.fa/.fas, optionally .gz)");
 }
 
 static bool is_manifest_header(const std::vector<std::string>& columns) {
@@ -409,7 +362,6 @@ static Config parse(int argc, char** argv) {
     if (option == "--manifest") config.manifest = value();
     else if (option == "--out") config.out = value();
     else if (option == "--threads") config.threads = std::stoi(value());
-    else if (option == "--fastp") config.fastp = value();
     else if (option == "--dna-tax") config.dna_tax = value();
     else if (option == "--dna-search-engine") config.dna_search_engine = value();
     else if (option == "--dna-packed-db") config.dna_packed_db = value();
@@ -427,9 +379,9 @@ static Config parse(int argc, char** argv) {
     }
     else if (option == "--help" || option == "-h") {
       std::cout << "dna2bit-sag-pipeline --manifest SAGs.tsv --out DIR [options]\n\n"
-                << "Input is detected from file contents, not filename extensions:\n"
-                << "  SAG_ID<TAB>R1<TAB>R2       Annotation: fastp, then DNA2bit on cleaned reads\n"
-                << "  SAG_ID<TAB>reads.fastq     Annotation: fastp, then DNA2bit on cleaned reads\n"
+                << "Input is routed by filename extension without opening sequence files during preflight:\n"
+                << "  SAG_ID<TAB>R1<TAB>R2       Annotation: raw paired reads directly to DNA2bit\n"
+                << "  SAG_ID<TAB>reads.fastq     Annotation: raw singleton reads directly to DNA2bit\n"
                 << "  SAG_ID<TAB>contigs.fasta   Annotation or Assembly input\n"
                 << "A matching optional header is accepted.\n\n"
                 << "Search engine is embedded teacher-compatible packed search:\n"
@@ -438,7 +390,7 @@ static Config parse(int argc, char** argv) {
                 << "  --stop-after annotation   write DNA2bit labels/pending files and skip Stage 3A\n\n"
                 << "  --annotations DIR        contig-only Assembly: import Annotation, then Stage 3A+3B\n\n"
                 << "Portable dependency paths:\n"
-                << "  --fastp PATH --subass PATH --flye-root PREFIX\n"
+                << "  --subass PATH --flye-root PREFIX\n"
                 << "  MICROSAGS_DNA_TAX, MICROSAGS_DNA_PACKED_DB and MICROSAGS_FLYE_ROOT\n"
                 << "  may be used instead of repeating data/runtime paths.\n";
       std::exit(0);
@@ -715,27 +667,22 @@ int main(int argc, char** argv) try {
   std::size_t contig_inputs = 0;
   for (auto& sag : sags) {
     const auto directory = config.out / "01_assembly" / sag.id;
-    const auto clean = directory / "clean";
-    fs::create_directories(clean);
+    fs::create_directories(directory);
     sag.assembly = directory / (sag.id + ".fasta");
 
     if (sag.input_kind == InputKind::paired_reads || sag.input_kind == InputKind::singleton_reads) {
       if (sag.input_kind == InputKind::paired_reads) ++read_inputs;
       else ++singleton_inputs;
-      sag.clean_r1 = clean / "R1.fastq.gz";
-      if (sag.input_kind == InputKind::paired_reads) sag.clean_r2 = clean / "R2.fastq.gz";
       const auto stage_pass = directory / "STAGE1.PASS";
       if (!(config.resume && fs::exists(stage_pass))) {
-        std::string qc = q(config.fastp) + " -i " + q(sag.source1) + " -o " + q(sag.clean_r1);
-        if (sag.input_kind == InputKind::paired_reads) qc += " -I " + q(sag.source2) + " -O " + q(sag.clean_r2);
-        qc += " --thread " + std::to_string(std::min(config.threads, 16)) + " --json " +
-              q(directory / "fastp.json") + " --html " + q(directory / "fastp.html");
-        run(qc, directory / "FASTP.PASS", config.dry);
         if (!config.dry) {
           std::ofstream(stage_pass) << "PASS\ninput_type=" << input_kind_name(sag.input_kind)
-                                    << "\ncompleted=fastp\nnext=DNA2bit\n";
+                                    << "\nsource_1=" << sag.source1.string()
+                                    << "\nsource_2=" << (sag.source2.empty() ? "NA" : sag.source2.string())
+                                    << "\nstart_stage=DNA2bit\nquality_control=none\n";
         }
       }
+      std::cerr << "+ [auto-route] " << sag.id << ": raw FASTQ; direct DNA2bit\n";
       sag.assembly_bp_known = true;
     } else {
       ++contig_inputs;
@@ -754,10 +701,10 @@ int main(int argc, char** argv) try {
         require_file(sag.assembly, "auto-routed contig FASTA");
         if (!fs::exists(stage_pass)) {
           std::ofstream(stage_pass) << "PASS\ninput_type=contigs\nsource=" << sag.source1.string()
-                                    << "\nskipped=fastp\nstart_stage=assembly_length_gate\n";
+                                    << "\nstart_stage=assembly_length_gate\nquality_control=none\n";
         }
       }
-      std::cerr << "+ [auto-route] " << sag.id << ": FASTA contigs; skip fastp\n";
+      std::cerr << "+ [auto-route] " << sag.id << ": FASTA contigs; assembly length gate\n";
     }
   }
 
@@ -787,8 +734,8 @@ int main(int argc, char** argv) try {
       const bool read_annotation = config.stop_after_annotation && sag.input_kind != InputKind::contigs;
       audit << sag.id << '\t' << input_kind_name(sag.input_kind) << '\t' << sag.source1.string() << '\t'
             << (sag.source2.empty() ? "NA" : sag.source2.string()) << '\t'
-            << (sag.input_kind != InputKind::contigs ? "fastp" : "assembly_length_gate") << '\t'
-            << (sag.input_kind != InputKind::contigs ? "none" : "fastp") << '\t'
+            << (sag.input_kind != InputKind::contigs ? "DNA2bit" : "assembly_length_gate") << '\t'
+            << "none" << '\t'
             << (read_annotation ? "NA" : sag.assembly.string()) << '\t'
             << (read_annotation ? 0 : sag.assembly_bp) << '\t'
             << (read_annotation || sag.assembly_bp >= 1000 ? "yes" : "no") << '\n';
@@ -844,16 +791,16 @@ int main(int argc, char** argv) try {
     if (config.resume && fs::exists(pass)) continue;
 
     if (sag->input_kind == InputKind::paired_reads || sag->input_kind == InputKind::singleton_reads) {
-      ensure_symlink(sag->clean_r1, directory / "R1.fastq.gz");
-      if (sag->input_kind == InputKind::paired_reads) ensure_symlink(sag->clean_r2, directory / "R2.fastq.gz");
+      ensure_symlink(sag->source1, directory / "raw_R1.fastq");
+      if (sag->input_kind == InputKind::paired_reads) ensure_symlink(sag->source2, directory / "raw_R2.fastq");
       const auto list = directory / "inputs.list";
       if (!config.dry) {
         std::ofstream output(list);
-        output << "R1.fastq.gz\n";
-        if (sag->input_kind == InputKind::paired_reads) output << "R2.fastq.gz\n";
+        output << "raw_R1.fastq\n";
+        if (sag->input_kind == InputKind::paired_reads) output << "raw_R2.fastq\n";
       }
-      std::vector<fs::path> sketch_inputs{sag->clean_r1};
-      if (sag->input_kind == InputKind::paired_reads) sketch_inputs.push_back(sag->clean_r2);
+      std::vector<fs::path> sketch_inputs{sag->source1};
+      if (sag->input_kind == InputKind::paired_reads) sketch_inputs.push_back(sag->source2);
       sketch_tasks.push_back({sketch_inputs,
                               directory / (sag->input_kind == InputKind::paired_reads
                                                ? "paired_reads.k.17.l.55296.bit"
@@ -873,7 +820,9 @@ int main(int argc, char** argv) try {
   run_embedded_sketches(sketch_tasks, static_cast<std::size_t>(sketch_workers), config.dry);
   if (!config.dry) {
     std::ofstream(config.out / "02_dna2bit" / "SKETCH.PASS")
-        << "PASS\nimplementation=embedded_dna2bit_source\nmode=per-SAG_auto_routed\nk=17\nbit_len=55296\nhash_type=0\n";
+        << "PASS\nimplementation=embedded_dna2bit_source\nmode=per-SAG_auto_routed\n"
+        << "fastq_input_policy=direct_raw_reads\nquality_control=none\n"
+        << "k=17\nbit_len=55296\nhash_type=0\n";
   }
 
   const auto bit_list = config.out / "02_dna2bit" / "bits.list";
@@ -953,6 +902,8 @@ int main(int argc, char** argv) try {
     if (found == by_bit.end()) continue;
     std::string taxonomy = columns[2];
     for (std::size_t i = 3; i < columns.size(); ++i) taxonomy += "," + columns[i];
+    taxonomy.erase(std::remove(taxonomy.begin(), taxonomy.end(), '\r'), taxonomy.end());
+    taxonomy.erase(std::remove(taxonomy.begin(), taxonomy.end(), '\n'), taxonomy.end());
     const auto key = species_key(taxonomy);
     groups[key].push_back(found->second);
     labeled.insert(found->second->id);

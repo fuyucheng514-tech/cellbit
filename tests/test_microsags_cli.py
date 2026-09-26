@@ -9,6 +9,14 @@ spec = importlib.util.spec_from_loader(loader.name, loader)
 cli = importlib.util.module_from_spec(spec); loader.exec_module(cli)
 
 class Inputs(unittest.TestCase):
+    def test_v050_direct_read_release_contract(self):
+        self.assertEqual(cli.VERSION, "0.5.0")
+        source=(Path(__file__).parents[1]/"src"/"main.cpp").read_text()
+        self.assertNotIn("config.fastp", source)
+        self.assertNotIn('option == "--fastp"', source)
+        self.assertIn("fastq_input_policy=direct_raw_reads", source)
+        self.assertIn("quality_control=none", source)
+
     def test_stage3b_database_paths_load_from_user_config(self):
         with tempfile.TemporaryDirectory() as d:
             config=Path(d)/"microsags/paths.env"; config.parent.mkdir()
@@ -76,6 +84,16 @@ class Inputs(unittest.TestCase):
             header, data = cli.rows(a)
             self.assertEqual(header,["sag_id","singleton_fastq"])
             self.assertEqual(data[0][0],"SAG_A")
+    def test_explicit_symlink_preserves_user_visible_sag_id(self):
+        with tempfile.TemporaryDirectory() as d:
+            target=Path(d)/"physical.fastq.gz"; target.write_text("@x\nA\n+\nI\n")
+            alias=Path(d)/"SAG_ALIAS.fastq.gz"
+            try: alias.symlink_to(target)
+            except (OSError, NotImplementedError) as error:
+                self.skipTest(f"symlinks unavailable: {error}")
+            a=Namespace(inputs=[str(alias)],file_list=None,reads1=None,reads2=None,
+                        r1_list=None,r2_list=None,input_type="singleton")
+            self.assertEqual(cli.rows(a)[1][0][0],"SAG_ALIAS")
     def test_explicit_type_rejects_suffix_conflict(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"SAG_A.fna"; p.write_text(">x\nA\n")

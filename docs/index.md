@@ -6,8 +6,8 @@ for single-amplified genomes (SAGs).
 ## Annotation mode
 
 Annotation mode accepts paired FASTQ reads, singleton FASTQ reads, or assembled
-contigs. FASTQ reads are quality-controlled with fastp and passed directly to
-DNA2bit; they are not assembled first.
+contigs. Original FASTQ reads are passed directly to DNA2bit; they are not
+trimmed, filtered, corrected, or assembled first.
 
 ```bash
 microsags annotate SAGs/ -d database -o annotation_output

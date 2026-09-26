@@ -10,8 +10,8 @@ Annotation mode assigns a DNA2bit species label to each SAG. It accepts paired
 FASTQ reads, singleton FASTQ reads, or assembled contigs. It does not run
 Stage 3A, Stage 3B or subassembly.
 
-For FASTQ input, Microsags runs fastp and sends all cleaned reads from each SAG
-directly to DNA2bit. It does not run SPAdes.
+For FASTQ input, Microsags sends all original reads from each SAG directly to
+DNA2bit. It does not trim, filter, correct, or assemble reads first.
 
 ### Paired FASTQ reads
 
@@ -91,7 +91,7 @@ causes a hard stop.
 ## Assembly mode
 
 Assembly mode reads prior species annotations and per-SAG contigs. It does not
-run fastp, SPAdes or DNA2bit again.
+repeat DNA2bit annotation or assemble the original FASTQ inputs.
 
 ```bash
 microsags assemble SAG_contigs/ \

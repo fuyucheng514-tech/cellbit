@@ -60,7 +60,7 @@
         <p>Microsags documents the original integrated DNA2bit-SAG Tractor software: its installation boundary, input contract, workflow modes, output evidence, and reproducibility rules.</p>
         <div class="callout citation"><strong>Citation</strong><p>This project currently has no substitute for its versioned source, release archive, and run evidence. The navigation and page organization follow the public <a href="https://semibin.readthedocs.io/en/latest/" target="_blank" rel="noreferrer">SemiBin documentation</a> pattern; Microsags does not use the SemiBin model or algorithm.</p></div>
         <h2 id="home-overview">Overview</h2>
-        <p>The software accepts a contigs manifest or a paired-reads manifest. A contigs entry can enter the DNA2bit path directly; a reads entry requires the documented read-processing and assembly stage before downstream processing.</p>
+        <p>The software accepts per-SAG contigs, paired FASTQ reads, or singleton FASTQ reads. Original FASTQ reads enter the embedded DNA2bit annotation path directly, without trimming, filtering, correction, or assembly.</p>
         <h2 id="home-install">Install</h2>
         <pre><code>git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
 cd Microsags
@@ -113,7 +113,7 @@ GCA_000002285.5,d__Bacteria;p__...;c__...;o__...;f__...;g__...;s__...</code></pr
         <pre><code>microsags annotate SAGs/ -d database -o annotation_output</code></pre>
         <p>Microsags is not yet published in Bioconda, so install it using this repository's <code>environment.yml</code> and <code>install.sh</code>.</p>
         <table><thead><tr><th>Artifact</th><th>Where it is recorded</th></tr></thead><tbody>
-          <tr><td>Source and binaries</td><td>Release archive and SHA256SUMS.txt</td></tr>
+          <tr><td>Source and binaries</td><td>Release archive and REPOSITORY_SHA256SUMS.txt</td></tr>
           <tr><td>Stage 3B database paths</td><td>~/.config/microsags/paths.env</td></tr>
           <tr><td>Other external components</td><td>EXTERNAL_COMPONENTS.tsv</td></tr>
         </tbody></table>
