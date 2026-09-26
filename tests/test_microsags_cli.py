@@ -10,7 +10,7 @@ cli = importlib.util.module_from_spec(spec); loader.exec_module(cli)
 
 class Inputs(unittest.TestCase):
     def test_v050_direct_read_release_contract(self):
-        self.assertEqual(cli.VERSION, "0.5.0")
+        self.assertEqual(cli.VERSION, "0.5.1")
         source=(Path(__file__).parents[1]/"src"/"main.cpp").read_text()
         self.assertNotIn("config.fastp", source)
         self.assertNotIn('option == "--fastp"', source)
@@ -38,6 +38,26 @@ class Inputs(unittest.TestCase):
             for p in ps: p.write_text(">x\nACGT\n")
             a=Namespace(file_list=None,inputs=list(map(str,ps)))
             self.assertEqual([cli.sag_id(p) for p in cli.fasta_paths(a)],["SAG_A","SAG-B"])
+    def test_sketch_uses_one_native_batch_then_unchanged_packer(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            refs=[]
+            for i in range(3):
+                ref=root/f"GCF_{i:09d}.1_genomic.fna"
+                ref.write_text(">x\nACGT\n"); refs.append(str(ref))
+            tax=root/"taxonomy.csv"; tax.write_text("test\n")
+            args=cli.make_parser().parse_args(["sketch",*refs,"-x",str(tax),"-o",str(root/"db"),"-t","2"])
+            lists=[]
+            def record(command, env=None):
+                if "--batch-list" in command:
+                    lists.append(Path(command[command.index("--batch-list")+1]).read_text().splitlines())
+            with patch.object(cli,"exe",side_effect=lambda n:n), patch.object(cli,"run",side_effect=record) as invoked:
+                cli.sketch(args)
+            self.assertEqual(invoked.call_count,2)
+            self.assertEqual(lists,[refs])
+            batch=invoked.call_args_list[0].args[0]
+            self.assertEqual(batch[batch.index("--threads")+1],2)
+            self.assertEqual(invoked.call_args_list[1].args[0][0],"dna2bit-pack-builder")
     def test_list_relative_to_itself(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/"one.fa"; p.write_text(">x\nA\n")

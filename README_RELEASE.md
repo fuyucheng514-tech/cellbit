@@ -1,4 +1,4 @@
-# Microsags source release v0.5.0
+# Microsags source release v0.5.1
 
 This release contains the source-only Microsags software. Annotation passes
 original FASTQ reads directly to the embedded DNA2bit engine; no read trimming,
@@ -24,9 +24,11 @@ Large scientific databases are intentionally not bundled in the source tree.
 
 ## Scope
 
-This source release contains the validated v0.5.0 direct-read Annotation path.
+This source release retains the v0.5.0 direct-read Annotation path and adds
+persistent native threads for database sketch construction. Sketch bytes,
+default parameters, database format, and annotation rules are unchanged.
 Historical benchmark and lake result directories remain outside the repository.
 
 `REPOSITORY_SHA256SUMS.txt` is the authoritative, checkout-relative checksum
-inventory for this v0.5.0 source release. The older `SHA256SUMS.txt` is retained
+inventory for this v0.5.1 source release. The older `SHA256SUMS.txt` is retained
 only as historical provenance for the original archived package.

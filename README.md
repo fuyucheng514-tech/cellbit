@@ -70,6 +70,10 @@ validates that every reference has taxonomy, and writes a `COMPLETE.json`
 receipt. The output directory is write-once and can be passed directly to
 `microsags annotate -d database`.
 
+In v0.5.1, reference sketching uses one native C++ process with `-t` persistent
+threads. It no longer starts a separate program for each reference. DNA2bit
+sketch parameters, packed database format and annotation rules are unchanged.
+
 ## Documentation
 
 Full documentation is available at

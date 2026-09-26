@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(dna2bit_sag_pipeline VERSION 0.5.0 LANGUAGES CXX)
+project(dna2bit_sag_pipeline VERSION 0.5.1 LANGUAGES CXX)
 
 set(HTS_ROOT "" CACHE PATH "Optional htslib/zlib installation prefix for bundled cpp-subass")
 if(HTS_ROOT)
@@ -122,6 +122,10 @@ if(BUILD_TESTING AND UNIX)
   set_tests_properties(gtdb_ani_af_rebind_taxonomy PROPERTIES TIMEOUT 120)
   add_test(NAME microsags_public_cli_inputs
            COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_microsags_cli.py)
+  add_test(NAME dna2bit_batch_sketch_equivalence
+           COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_batch_sketch.py
+                   --binary $<TARGET_FILE:dna2bit-embedded-sketch>)
+  set_tests_properties(dna2bit_batch_sketch_equivalence PROPERTIES TIMEOUT 120)
 endif()
 
 install(TARGETS dna2bit-sag-pipeline dna2bit-embedded-sketch sag-stage3b-tractor gtdb-ani-af dna2bit-packed

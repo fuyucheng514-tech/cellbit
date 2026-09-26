@@ -1,6 +1,6 @@
 # Install
 
-Microsags v0.5.0 supports Linux x86-64. The recommended installation uses Conda
+Microsags v0.5.1 supports Linux x86-64. The recommended installation uses Conda
 or Mamba to create an isolated environment from conda-forge and Bioconda.
 
 ## Install with Conda or Mamba
@@ -126,6 +126,11 @@ The command performs four steps automatically:
 3. pack the sketches and bind them to the taxonomy table;
 4. validate the one-to-one reference/taxonomy closure and write
    `COMPLETE.json` plus SHA-256 receipts.
+
+From v0.5.1, `-t` controls persistent C++ sketch threads in one process,
+instead of launching a program separately for every reference. The sketch
+algorithm, parameters and database format are unchanged. Packing remains a
+separate stage and is included in total database-construction time.
 
 The output is write-once. An existing `database/` is never overwritten. If the
 command fails, the incomplete working directory is retained for diagnosis and
