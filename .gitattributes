@@ -1,3 +1,4 @@
+* text=auto eol=lf
 *.sh text eol=lf
 tools/microsags text eol=lf
 *.py text eol=lf
