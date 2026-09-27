@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(dna2bit_sag_pipeline VERSION 0.5.1 LANGUAGES CXX)
+project(dna2bit_sag_pipeline VERSION 0.5.2 LANGUAGES CXX)
 
 set(HTS_ROOT "" CACHE PATH "Optional htslib/zlib installation prefix for bundled cpp-subass")
 if(HTS_ROOT)
@@ -9,6 +9,13 @@ endif()
 
 find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
+
+# Optional acceleration only: builds without libdeflate retain the zlib reader.
+option(DNA2BIT_ENABLE_LIBDEFLATE "Use bounded libdeflate gzip acceleration when available" ON)
+if(DNA2BIT_ENABLE_LIBDEFLATE)
+  find_path(DNA2BIT_LIBDEFLATE_INCLUDE_DIR libdeflate.h)
+  find_library(DNA2BIT_LIBDEFLATE_LIBRARY NAMES deflate)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -65,6 +72,15 @@ add_executable(dna2bit-embedded-sketch src/dna2bit_embedded_cli.cpp src/dna2bit_
 target_link_libraries(dna2bit-embedded-sketch PRIVATE ZLIB::ZLIB Threads::Threads)
 dna2bit_configure_target(dna2bit-embedded-sketch)
 target_link_libraries(dna2bit-sag-pipeline PRIVATE ZLIB::ZLIB Threads::Threads)
+
+if(DNA2BIT_ENABLE_LIBDEFLATE AND DNA2BIT_LIBDEFLATE_INCLUDE_DIR AND DNA2BIT_LIBDEFLATE_LIBRARY)
+  foreach(target dna2bit-embedded-sketch dna2bit-sag-pipeline)
+    target_compile_definitions(${target} PRIVATE DNA2BIT_HAVE_LIBDEFLATE=1)
+    target_include_directories(${target} PRIVATE ${DNA2BIT_LIBDEFLATE_INCLUDE_DIR})
+    target_link_libraries(${target} PRIVATE ${DNA2BIT_LIBDEFLATE_LIBRARY})
+  endforeach()
+  message(STATUS "Embedded sketch gzip acceleration: ${DNA2BIT_LIBDEFLATE_LIBRARY}")
+endif()
 dna2bit_configure_target(dna2bit-sag-pipeline)
 
 add_executable(sag-stage3b-tractor src/stage3b.cpp)

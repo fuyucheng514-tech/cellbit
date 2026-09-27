@@ -1,4 +1,4 @@
-# Microsags source release v0.5.1
+# Microsags source release v0.5.2
 
 This release contains the source-only Microsags software. Annotation passes
 original FASTQ reads directly to the embedded DNA2bit engine; no read trimming,
@@ -15,7 +15,7 @@ JOBS=8 PREFIX="$CONDA_PREFIX" bash install.sh
 microsags --version
 ```
 
-Without Conda, install a C++ compiler and CMake first, then run `bash install.sh`.
+For manual builds, see `INSTALL.md` for compiler and library dependencies.
 
 ## Configure databases
 
@@ -24,11 +24,18 @@ Large scientific databases are intentionally not bundled in the source tree.
 
 ## Scope
 
-This source release retains the v0.5.0 direct-read Annotation path and adds
-persistent native threads for database sketch construction. Sketch bytes,
-default parameters, database format, and annotation rules are unchanged.
+This release retains direct-read Annotation and the persistent native sketch
+workers introduced in v0.5.1. It adds bounded libdeflate gzip decoding and
+cache-friendly, overflow-guarded sketch counters. The Conda environment includes
+libdeflate; manual builds still work without it using the existing zlib reader.
+Sketch bytes, default parameters, database format, annotation rules and assembly
+logic are unchanged. Existing packed databases do not need to be rebuilt.
 Historical benchmark and lake result directories remain outside the repository.
 
+Compatibility evidence and regression commands are recorded in
+`tests/SKETCH_OPTIMIZATION_VALIDATION.md`. No comparative speed claim is made
+from differently selected benchmark runs.
+
 `REPOSITORY_SHA256SUMS.txt` is the authoritative, checkout-relative checksum
-inventory for this v0.5.1 source release. The older `SHA256SUMS.txt` is retained
+inventory for this v0.5.2 source release. The older `SHA256SUMS.txt` is retained
 only as historical provenance for the original archived package.

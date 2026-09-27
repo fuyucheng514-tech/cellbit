@@ -53,6 +53,14 @@ cmake --install build --prefix "$HOME/.local"
 microsags --help
 ```
 
+The Conda environment includes libdeflate. For manual builds, optionally install
+the `libdeflate` development library before configuring CMake
+to accelerate decoding of small gzip reference files. CMake detects it
+automatically. Without it, Microsags retains its zlib reader and produces the
+same sketches. To explicitly disable this optional path, configure with
+`-DDNA2BIT_ENABLE_LIBDEFLATE=OFF`. Large files and multi-member gzip streams
+continue to use the streaming reader; scientific parameters are unchanged.
+
 ## Scientific databases
 
 Large scientific databases are deliberately not stored in GitHub or inside the

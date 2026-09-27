@@ -6,23 +6,98 @@
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <zlib.h>
+#ifdef DNA2BIT_HAVE_LIBDEFLATE
+#include <libdeflate.h>
+#endif
 
 #include "dna2bit_embedded_vendor/MurmurHash3.h"
 #include "dna2bit_embedded_vendor/kseq.h"
 #include "dna2bit_embedded_vendor/rollinghash.h"
 #include "dna2bit_embedded_vendor/wyhash.h"
 
-KSEQ_INIT(gzFile, gzread)
+namespace {
+
+// A bounded, optional gzip fast path. Keep the same kseq parser and use zlib
+// for plain input, multi-member gzip, large streams, or unsupported containers.
+// CRC/size checks are performed by libdeflate before any sequence is exposed.
+class SequenceInput {
+ public:
+  explicit SequenceInput(const std::filesystem::path& path) {
+#ifdef DNA2BIT_HAVE_LIBDEFLATE
+    if (load_gzip(path)) return;
+#endif
+    stream_ = gzopen(path.string().c_str(), "rb");
+    if (!stream_) throw std::runtime_error("cannot open sequence for embedded DNA2bit: " + path.string());
+  }
+  ~SequenceInput() { if (stream_) gzclose(stream_); }
+  SequenceInput(const SequenceInput&) = delete;
+  SequenceInput& operator=(const SequenceInput&) = delete;
+  int read(void* output, unsigned count) {
+    if (stream_) return gzread(stream_, output, count);
+    const std::size_t available = std::min<std::size_t>(count, decoded_.size() - position_);
+    if (available) std::memcpy(output, decoded_.data() + position_, available);
+    position_ += available;
+    return static_cast<int>(available);
+  }
+ private:
+  gzFile stream_ = nullptr;
+  std::vector<unsigned char> decoded_;
+  std::size_t position_ = 0;
+#ifdef DNA2BIT_HAVE_LIBDEFLATE
+  bool load_gzip(const std::filesystem::path& path) {
+    constexpr std::uintmax_t limit = 64U << 20;
+    if (path.extension() != ".gz") return false;
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(path, error) || error) return false;
+    const auto size = std::filesystem::file_size(path, error);
+    if (error || size < 18 || size > limit) return false;
+    std::ifstream input(path, std::ios::binary);
+    if (!input) return false;
+    std::vector<unsigned char> compressed(static_cast<std::size_t>(size));
+    if (!input.read(reinterpret_cast<char*>(compressed.data()), compressed.size())) return false;
+    if (compressed[0] != 31 || compressed[1] != 139 || compressed[2] != 8) return false;
+    const auto* trailer = compressed.data() + compressed.size() - 4;
+    const std::uint32_t expected = static_cast<std::uint32_t>(trailer[0]) |
+        (static_cast<std::uint32_t>(trailer[1]) << 8) |
+        (static_cast<std::uint32_t>(trailer[2]) << 16) |
+        (static_cast<std::uint32_t>(trailer[3]) << 24);
+    if (expected > limit) return false;
+    using Decoder = std::unique_ptr<libdeflate_decompressor, decltype(&libdeflate_free_decompressor)>;
+    thread_local Decoder decoder(libdeflate_alloc_decompressor(), libdeflate_free_decompressor);
+    if (!decoder) return false;
+    std::vector<unsigned char> decoded(std::max<std::size_t>(1, expected));
+    std::size_t consumed = 0;
+    const auto result = libdeflate_gzip_decompress_ex(decoder.get(), compressed.data(),
+        compressed.size(), decoded.data(), expected, &consumed, nullptr);
+    // In particular, do not silently discard additional concatenated members.
+    if (result != LIBDEFLATE_SUCCESS || consumed != compressed.size()) return false;
+    decoded.resize(expected);
+    decoded_ = std::move(decoded);
+    return true;
+  }
+#endif
+};
+
+int read_sequence(SequenceInput* input, void* output, unsigned count) {
+  return input->read(output, count);
+}
+
+}  // namespace
+
+KSEQ_INIT(SequenceInput*, read_sequence)
 
 namespace {
 
+template <class Count>
 void read2dis_wy(const char* read, const std::size_t sliding_len,
-                 std::vector<long>& dis) {
+                 std::vector<Count>& dis) {
   const std::size_t length = std::strlen(read);
   if (length <= sliding_len) return;
   const std::size_t vec_size = dis.size();
@@ -49,8 +124,9 @@ void read2dis_mu(const char* read, const std::size_t sliding_len,
   }
 }
 
+template <class Count>
 void reads2dis_wy(const char* code, const char* read,
-                  const std::size_t sliding_len, std::vector<long>& dis) {
+                  const std::size_t sliding_len, std::vector<Count>& dis) {
   const std::size_t length = std::strlen(read);
   if (length <= sliding_len) return;
   std::vector<char> complement(length + 1, '\0');
@@ -81,16 +157,47 @@ void dis2bit(std::vector<long>& bit) {
   for (long& value : bit) value = (value >> 63) + 1;
 }
 
-void handle_fasta_wy(gzFile input, const char* code, const std::size_t kmer,
+void handle_fasta_wy(SequenceInput* input, const char* code, const std::size_t kmer,
                      std::vector<long>& bit) {
   kseq_t* sequence = kseq_init(input);
+  // Smaller counters keep the random-access accumulator cache-friendly. A
+  // conservative window budget proves that no int32 counter can overflow.
+  // Flush exact signed counts into the legacy wide accumulator before the
+  // budget is exhausted; unusually long records use the original wide path.
+  std::vector<std::int32_t> narrow(bit.size(), 0);
+#ifdef DNA2BIT_TEST_COUNTER_BUDGET
+  constexpr std::size_t max_updates = DNA2BIT_TEST_COUNTER_BUDGET;
+  static_assert(max_updates > 0 && max_updates <= std::numeric_limits<std::int32_t>::max(),
+                "invalid test counter budget");
+#else
+  constexpr std::size_t max_updates = std::numeric_limits<std::int32_t>::max();
+#endif
+  std::size_t available = max_updates;
+  auto flush = [&] {
+    for (std::size_t i = 0; i < bit.size(); ++i) {
+      bit[i] += narrow[i];
+      narrow[i] = 0;
+    }
+    available = max_updates;
+  };
   while (kseq_read(sequence) >= 0) {
-    reads2dis_wy(code, sequence->seq.s, kmer, bit);
+    const std::size_t length = sequence->seq.l;
+    if (length <= kmer) continue;
+    if (length - kmer > max_updates / 2) {
+      flush();
+      reads2dis_wy(code, sequence->seq.s, kmer, bit);
+    } else {
+      const std::size_t updates = 2 * (length - kmer);
+      if (updates > available) flush();
+      reads2dis_wy(code, sequence->seq.s, kmer, narrow);
+      available -= updates;
+    }
   }
+  flush();
   kseq_destroy(sequence);
 }
 
-void handle_fasta_ro(gzFile input, const std::size_t kmer,
+void handle_fasta_ro(SequenceInput* input, const std::size_t kmer,
                      std::vector<long>& bit) {
   const std::size_t bit_len = bit.size();
   kseq_t* sequence = kseq_init(input);
@@ -122,7 +229,7 @@ void handle_fasta_ro(gzFile input, const std::size_t kmer,
   kseq_destroy(sequence);
 }
 
-void handle_fasta_mu(gzFile input, const char* code, const std::size_t kmer,
+void handle_fasta_mu(SequenceInput* input, const char* code, const std::size_t kmer,
                      std::vector<long>& bit) {
   kseq_t* sequence = kseq_init(input);
   while (kseq_read(sequence) >= 0) {
@@ -190,22 +297,13 @@ void sketch_files(const std::vector<std::filesystem::path>& inputs,
   }
   try {
     for (const auto& input : inputs) {
-      gzFile file = gzopen(input.string().c_str(), "rb");
-      if (!file) {
-        throw std::runtime_error("cannot open sequence for embedded DNA2bit: " + input.string());
+      SequenceInput file(input);
+      switch (hash_type) {
+        case 0: handle_fasta_wy(&file, code, kmer_len, bit); break;
+        case 1: handle_fasta_ro(&file, kmer_len, bit); break;
+        case 2: handle_fasta_mu(&file, code, kmer_len, bit); break;
+        default: throw std::runtime_error("unsupported embedded DNA2bit hash type");
       }
-      try {
-        switch (hash_type) {
-          case 0: handle_fasta_wy(file, code, kmer_len, bit); break;
-          case 1: handle_fasta_ro(file, kmer_len, bit); break;
-          case 2: handle_fasta_mu(file, code, kmer_len, bit); break;
-          default: throw std::runtime_error("unsupported embedded DNA2bit hash type");
-        }
-      } catch (...) {
-        gzclose(file);
-        throw;
-      }
-      gzclose(file);
     }
     dis2bit(bit);
     write_bits(output_file, bit);

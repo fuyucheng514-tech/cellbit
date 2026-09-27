@@ -10,7 +10,7 @@ cli = importlib.util.module_from_spec(spec); loader.exec_module(cli)
 
 class Inputs(unittest.TestCase):
     def test_v050_direct_read_release_contract(self):
-        self.assertEqual(cli.VERSION, "0.5.1")
+        self.assertEqual(cli.VERSION, "0.5.2")
         source=(Path(__file__).parents[1]/"src"/"main.cpp").read_text()
         self.assertNotIn("config.fastp", source)
         self.assertNotIn('option == "--fastp"', source)

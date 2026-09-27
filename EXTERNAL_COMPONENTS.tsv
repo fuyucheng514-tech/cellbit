@@ -6,3 +6,4 @@ Flye_modules	assembly_backend	external_environment
 CheckM2	final_quality_evaluation	external_command
 GTDB-Tk	Stage3B_marker_identification	external_command
 BLAST+	Stage3B_marker_processing	external_command
+libdeflate	optional_reference_gzip_decoder	external_library

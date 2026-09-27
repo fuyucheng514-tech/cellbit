@@ -1,6 +1,6 @@
 # Install
 
-Microsags v0.5.1 supports Linux x86-64. The recommended installation uses Conda
+Microsags v0.5.2 supports Linux x86-64. The recommended installation uses Conda
 or Mamba to create an isolated environment from conda-forge and Bioconda.
 
 ## Install with Conda or Mamba
@@ -19,6 +19,7 @@ microsags --help
 
 `environment.yml` installs the compiler and runtime dependencies. `install.sh`
 builds the C++17 programs and installs them into the active environment.
+It also includes libdeflate for accelerated reference-file decoding.
 
 ## Install the current source without Git
 
@@ -40,6 +41,11 @@ microsags --help
 A source build requires a C++17 compiler, CMake, pkg-config, zlib and HTSlib.
 Runtime execution additionally requires the tools used by the selected input
 route.
+
+Optionally install the libdeflate development library for faster gzip decoding;
+CMake detects it automatically. Without it, the zlib streaming reader remains
+available and produces the same sketches. To explicitly disable the accelerator,
+add `-DDNA2BIT_ENABLE_LIBDEFLATE=OFF` when configuring CMake.
 
 ```bash
 git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
@@ -131,6 +137,10 @@ From v0.5.1, `-t` controls persistent C++ sketch threads in one process,
 instead of launching a program separately for every reference. The sketch
 algorithm, parameters and database format are unchanged. Packing remains a
 separate stage and is included in total database-construction time.
+
+Version 0.5.2 also optimizes gzip decoding and sketch-counter memory access,
+without changing sketch values or the database format. Existing databases do
+not need to be rebuilt.
 
 The output is write-once. An existing `database/` is never overwritten. If the
 command fails, the incomplete working directory is retained for diagnosis and

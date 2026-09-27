@@ -74,6 +74,10 @@ In v0.5.1, reference sketching uses one native C++ process with `-t` persistent
 threads. It no longer starts a separate program for each reference. DNA2bit
 sketch parameters, packed database format and annotation rules are unchanged.
 
+Version 0.5.2 further optimizes gzip decoding and sketch-counter memory access.
+The Conda installation includes the optional libdeflate accelerator. Existing
+databases and command lines remain compatible; no database rebuild is required.
+
 ## Documentation
 
 Full documentation is available at
