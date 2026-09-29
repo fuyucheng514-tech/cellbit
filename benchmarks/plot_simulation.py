@@ -159,7 +159,7 @@ def main() -> None:
         hours_i = times_h[source_idx]
         if source_idx < 4:
             software_minutes = (seconds_i - spades_seconds) / 60
-            label = f"{spades_hours:.4f} h + {software_minutes:.3f} min\n= {hours_i:.4f} h"
+            label = f"+ {software_minutes:.3f} min\n= {hours_i:.4f} h"
         else:
             label = f"{hours_i:.3f} h" if hours_i >= 1 else f"{seconds_i / 60:.3f} min"
         axes[0].text(hours_i + 0.20, idx, label, va="center", ha="left", fontsize=9.2)
