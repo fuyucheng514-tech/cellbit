@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Microsags public CLI (v0.5.2)."""
 from __future__ import annotations
-import argparse, csv, os, re, shutil, subprocess, sys, tempfile
+import argparse, csv, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
 VERSION = "0.5.2"
@@ -356,7 +356,10 @@ def _publish_assemblies(work, destination):
     staging.rename(destination)
 
 def annotate_assemble(args):
+    profiling=os.environ.get("MICROSAGS_PROFILE")=="1"
+    started=time.perf_counter()
     header, data = rows(args); final=Path(args.output).expanduser().resolve(); parent=final.parent; parent.mkdir(parents=True,exist_ok=True)
+    input_done=time.perf_counter()
     if final.exists(): raise Error(f"write-once output exists: {final}")
     work=parent/f".{final.name}.work"
     if work.exists(): raise Error(f"write-once work directory exists: {work}")
@@ -371,11 +374,26 @@ def annotate_assemble(args):
             compat=parent/f".{final.name}.annotations-{os.getpid()}"
             _compat_annotations(original_annotations,data,compat); args.annotations=str(compat)
         pipeline(args,manifest,args.command=="annotate")
+        pipeline_done=time.perf_counter()
+        if profiling and args.command=="annotate" and (work/"TIMING.tsv").is_file():
+            for line in (work/"TIMING.tsv").read_text(encoding="utf-8").splitlines()[1:]:
+                print("MICROSAGS_CORE_PROFILE\t"+line,file=sys.stderr)
         if args.command=="assemble": stage3b(args)
+        stage3b_done=time.perf_counter()
         if args.command=="annotate": _publish_annotations(work,final,data)
         else: _publish_assemblies(work,final)
+        publish_done=time.perf_counter()
         shutil.rmtree(work)
         if args.command=="assemble": shutil.rmtree(compat)
+        if profiling:
+            finished=time.perf_counter()
+            print("MICROSAGS_WRAPPER_PROFILE\t"
+                  f"input={input_done-started:.6f}\t"
+                  f"pipeline={pipeline_done-input_done:.6f}\t"
+                  f"stage3b={stage3b_done-pipeline_done:.6f}\t"
+                  f"publish={publish_done-stage3b_done:.6f}\t"
+                  f"cleanup={finished-publish_done:.6f}\t"
+                  f"total={finished-started:.6f}",file=sys.stderr)
     finally:
         args.output=original_output
         if args.command=="assemble": args.annotations=original_annotations

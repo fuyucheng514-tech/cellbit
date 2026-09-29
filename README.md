@@ -83,6 +83,13 @@ databases and command lines remain compatible; no database rebuild is required.
 Full documentation is available at
 [fuyucheng514-tech.github.io/cellbit](https://fuyucheng514-tech.github.io/cellbit/).
 
+The [performance page](https://fuyucheng514-tech.github.io/cellbit/performance/)
+shows four separately downloadable SVG panels for simulated SAGs and 24 real
+samples. The current annotation path avoids temporary per-SAG read receipts,
+processes compressed contigs directly, and uses the full requested thread
+budget for independent sketch tasks. Annotation labels remain unchanged in
+the verified regression runs.
+
 ## Citation
 
 A Microsags manuscript and formal citation are in preparation. DNA2bit and

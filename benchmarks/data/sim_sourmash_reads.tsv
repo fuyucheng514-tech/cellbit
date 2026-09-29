@@ -1,0 +1,2 @@
+n_total_samples	n_evaluated	n_correct	accuracy	sourmash_sketch_total_time_s	sourmash_sketch_mean_time_s	sourmash_sketch_median_time_s	sourmash_sketch_max_rss_kb	sourmash_search_total_time_s	sourmash_search_mean_time_s	sourmash_search_median_time_s	sourmash_search_max_rss_kb	sourmash_total_time_s
+5000	4774	4774	1.000000	9212.5900	1.8425	1.7700	103388	48709.2200	9.7418	9.4300	1863508	57921.8100

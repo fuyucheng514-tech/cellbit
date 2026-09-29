@@ -1,0 +1,2 @@
+method	input	n_sags	n_classified	threads	reference_count	elapsed_s	max_rss_kib	max_rss_gib
+Microsags v0.5.2	SPAdes contigs	5000	4899	20	113104	180.750	892952	0.851585

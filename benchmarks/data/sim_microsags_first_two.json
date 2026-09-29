@@ -1,0 +1,26 @@
+{
+  "selection": "First two completed independent runs, selected by run order; third higher-load run excluded from the displayed mean but retained on the server",
+  "dataset": "5000 simulated SAGs, paired reads and archived SPAdes contigs",
+  "threads_requested": 20,
+  "core_sha256": "d4caf1f064ee7294595e52903185f583da1b4638fdf42f27647dbd33d4a29408",
+  "included_runs": [
+    {
+      "attempt": "attempt_001_candidate3/full5000",
+      "root": "/home/data/singlemeta/single_meta/temp/microsags_optimization_sim_20260929/attempt_001_candidate3/full5000",
+      "reads": {"wall_seconds": 67.64, "max_rss_kb": 1272656},
+      "contigs": {"wall_seconds": 43.41, "max_rss_kb": 909376}
+    },
+    {
+      "attempt": "attempt_002_retest_20threads",
+      "root": "/home/data/singlemeta/single_meta/temp/microsags_optimization_sim_20260929/attempt_002_retest_20threads",
+      "reads": {"wall_seconds": 36.87, "max_rss_kb": 1274380},
+      "contigs": {"wall_seconds": 25.51, "max_rss_kb": 907320}
+    }
+  ],
+  "excluded_run": {
+    "attempt": "attempt_003_retest_20threads",
+    "reads_wall_seconds": 117.12,
+    "contigs_wall_seconds": 61.54,
+    "reason": "Higher shared-server load; retained as raw result, not included in the user-requested two-run mean"
+  }
+}

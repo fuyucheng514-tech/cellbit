@@ -1,0 +1,2 @@
+n_sags	threads	mash_sketch_sum_s	mash_dist_s	mash_stage_max_rss_kb	mash_nonmaxdistance_queries	sourmash_sketch_sum_s	sourmash_search_sum_s	sourmash_stage_max_rss_kb	sourmash_nonempty_searches	mash_total_recorded_s	sourmash_total_recorded_s
+5000	20	656.7699999999995	1312.99	1944252	4998	5130.78000000002	32669.169999999987	1532044	4404	1969.7599999999995	37799.950000000004

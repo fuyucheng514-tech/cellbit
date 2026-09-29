@@ -1,0 +1,2 @@
+n_total_samples	n_evaluated	n_correct	accuracy	mash_sketch_total_time_s	mash_sketch_mean_time_s	mash_sketch_median_time_s	mash_sketch_max_rss_kb	mash_dist_total_time_s	mash_dist_max_rss_kb	mash_total_time_s
+5000	5000	5000	1.000000	1619.9400	0.3240	0.3200	24768	1315.6800	1964384	2935.6200

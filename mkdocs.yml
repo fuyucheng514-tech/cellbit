@@ -14,6 +14,7 @@ nav:
   - Home: index.md
   - Install: install.md
   - Usage examples: usage.md
+  - Performance: performance.md
   - Lake quarter tutorial: lake-quarter-tutorial.md
   - Results and output files: outputs.md
   - Adjust Leiden clustering: stage3b.md

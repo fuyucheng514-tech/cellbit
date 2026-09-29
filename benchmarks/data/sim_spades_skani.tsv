@@ -1,0 +1,2 @@
+n_total_samples	n_evaluated	n_correct	accuracy	spades_total_time_s	spades_mean_time_s	spades_median_time_s	spades_max_rss_kb	skani_total_time_s	skani_max_rss_kb
+5000	4791	4788	0.999374	69173.5600	13.8347	12.3650	1077420	294.1700	63878872

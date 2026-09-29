@@ -191,21 +191,6 @@ static void run_bounded_parallel(const std::vector<CommandTask>& tasks, std::siz
   }
 }
 
-// The two expensive child stages have different process startup and memory
-// profiles.  These targets keep each child useful while deriving the number
-// of simultaneous children solely from the single global --threads budget.
-// Multiplying returned workers by returned threads-per-worker never exceeds
-// the requested budget.
-static std::pair<std::size_t, int> bounded_parallel_shape(std::size_t jobs, int total_threads,
-                                                          int target_threads_per_child) {
-  if (jobs == 0) return {0, 1};
-  const auto wanted_workers = static_cast<std::size_t>(
-      std::max(1, total_threads / std::max(1, target_threads_per_child)));
-  const auto workers = std::min(jobs, wanted_workers);
-  const int threads_per_worker = std::max(1, total_threads / static_cast<int>(workers));
-  return {workers, threads_per_worker};
-}
-
 static std::vector<std::string> split(const std::string& value, char delimiter) {
   std::vector<std::string> values;
   if (value.empty()) return values;
@@ -449,16 +434,36 @@ struct FastaStats {
 
 static void consume_fasta_sequence_line(const std::string& line, FastaStats& stats,
                                         std::uint64_t& current_contig) {
-  for (unsigned char c : line) {
-    if (std::isspace(c)) continue;
-    ++stats.total;
-    ++current_contig;
-    const unsigned char base = static_cast<unsigned char>(std::toupper(c));
-    if (base == 'A' || base == 'C' || base == 'G' || base == 'T') {
-      ++stats.acgt;
-      if (base == 'C' || base == 'G') ++stats.gc;
+  // The annotation preflight counts every base without changing the length
+  // gate or statistics.  Classify each possible byte once instead of making
+  // locale-aware ctype calls for every base in multi-gigabyte FASTA inputs.
+  static const auto classification = [] {
+    std::array<unsigned char, 256> table{};
+    for (std::size_t i = 0; i < table.size(); ++i) {
+      const auto c = static_cast<unsigned char>(i);
+      if (std::isspace(c)) continue;
+      table[i] = 1;
+      const auto base = static_cast<unsigned char>(std::toupper(c));
+      if (base == 'A' || base == 'C' || base == 'G' || base == 'T') {
+        table[i] |= 2;
+        if (base == 'C' || base == 'G') table[i] |= 4;
+      }
     }
+    return table;
+  }();
+  std::uint64_t total = 0;
+  std::uint64_t acgt = 0;
+  std::uint64_t gc = 0;
+  for (unsigned char c : line) {
+    const unsigned char flags = classification[c];
+    total += (flags & 1) != 0;
+    acgt += (flags & 2) != 0;
+    gc += (flags & 4) != 0;
   }
+  stats.total += total;
+  current_contig += total;
+  stats.acgt += acgt;
+  stats.gc += gc;
 }
 
 // Returns true when all FASTA statistics were obtained while a gzip input was
@@ -661,52 +666,57 @@ int main(int argc, char** argv) try {
     }
   }
   fs::create_directories(config.out);
+  fs::create_directories(config.out / "01_assembly");
 
   std::size_t read_inputs = 0;
   std::size_t singleton_inputs = 0;
   std::size_t contig_inputs = 0;
   for (auto& sag : sags) {
     const auto directory = config.out / "01_assembly" / sag.id;
-    fs::create_directories(directory);
     sag.assembly = directory / (sag.id + ".fasta");
 
     if (sag.input_kind == InputKind::paired_reads || sag.input_kind == InputKind::singleton_reads) {
       if (sag.input_kind == InputKind::paired_reads) ++read_inputs;
       else ++singleton_inputs;
-      const auto stage_pass = directory / "STAGE1.PASS";
-      if (!(config.resume && fs::exists(stage_pass))) {
-        if (!config.dry) {
-          std::ofstream(stage_pass) << "PASS\ninput_type=" << input_kind_name(sag.input_kind)
-                                    << "\nsource_1=" << sag.source1.string()
-                                    << "\nsource_2=" << (sag.source2.empty() ? "NA" : sag.source2.string())
-                                    << "\nstart_stage=DNA2bit\nquality_control=none\n";
-        }
-      }
-      std::cerr << "+ [auto-route] " << sag.id << ": raw FASTQ; direct DNA2bit\n";
+      // Annotation reads are consumed directly by the embedded sketcher.
+      // No Stage 1 assembly exists, so avoid a throwaway directory and receipt
+      // for every SAG. The public annotation output remains unchanged.
       sag.assembly_bp_known = true;
     } else {
       ++contig_inputs;
-      const auto stage_pass = directory / "STAGE1.PASS";
-      if (!config.dry && !fs::exists(sag.assembly)) {
-        FastaStats stats;
-        sag.assembly_bp_known = materialize_contigs(sag.source1, sag.assembly, stats);
-        if (sag.assembly_bp_known) {
-          sag.assembly_bp = stats.total;
-          sag.assembly_max_contig = stats.max_contig;
-          sag.assembly_gc = stats.gc;
-          sag.assembly_acgt = stats.acgt;
+      if (config.stop_after_annotation) {
+        // The embedded sketch reader accepts plain and gzip FASTA directly.
+        // Annotation does not need a persistent assembly view, so avoid
+        // serially inflating and writing every compressed SAG to disk.
+        // populate_missing_assembly_bases still scans the source for the
+        // unchanged length gate and statistics before sketching.
+        sag.assembly = sag.source1;
+      } else {
+        fs::create_directories(directory);
+        const auto stage_pass = directory / "STAGE1.PASS";
+        if (!config.dry && !fs::exists(sag.assembly)) {
+          FastaStats stats;
+          sag.assembly_bp_known = materialize_contigs(sag.source1, sag.assembly, stats);
+          if (sag.assembly_bp_known) {
+            sag.assembly_bp = stats.total;
+            sag.assembly_max_contig = stats.max_contig;
+            sag.assembly_gc = stats.gc;
+            sag.assembly_acgt = stats.acgt;
+          }
+        }
+        if (!config.dry) {
+          require_file(sag.assembly, "auto-routed contig FASTA");
+          if (!fs::exists(stage_pass)) {
+            std::ofstream(stage_pass) << "PASS\ninput_type=contigs\nsource=" << sag.source1.string()
+                                      << "\nstart_stage=assembly_length_gate\nquality_control=none\n";
+          }
         }
       }
-      if (!config.dry) {
-        require_file(sag.assembly, "auto-routed contig FASTA");
-        if (!fs::exists(stage_pass)) {
-          std::ofstream(stage_pass) << "PASS\ninput_type=contigs\nsource=" << sag.source1.string()
-                                    << "\nstart_stage=assembly_length_gate\nquality_control=none\n";
-        }
-      }
-      std::cerr << "+ [auto-route] " << sag.id << ": FASTA contigs; assembly length gate\n";
     }
   }
+  std::cerr << "+ [auto-route] paired_reads=" << read_inputs
+            << " singleton_reads=" << singleton_inputs
+            << " contigs=" << contig_inputs << "\n";
 
   std::vector<Sag*> eligible;
   const auto excluded_path = config.out / "01_assembly" / "excluded_lt1000bp.tsv";
@@ -777,11 +787,10 @@ int main(int argc, char** argv) try {
 
   const auto bit_directory = config.out / "02_dna2bit" / "bits";
   fs::create_directories(bit_directory);
-  // dna2bit sketches are independent per SAG.  Four threads is enough to
-  // avoid spending most time in process/setup overhead on the Lake inputs,
-  // while the product of worker count and -n stays within --threads.
-  const auto [sketch_workers, sketch_threads] =
-      bounded_parallel_shape(eligible.size(), config.threads, 4);
+  // Each embedded sketch task is single-threaded. Bound the in-process
+  // worker pool by --threads instead of reserving four threads per task.
+  const auto sketch_workers = std::min<std::size_t>(
+      eligible.size(), static_cast<std::size_t>(config.threads));
   std::vector<EmbeddedSketchTask> sketch_tasks;
   sketch_tasks.reserve(eligible.size());
   for (auto* sag : eligible) {
@@ -791,14 +800,6 @@ int main(int argc, char** argv) try {
     if (config.resume && fs::exists(pass)) continue;
 
     if (sag->input_kind == InputKind::paired_reads || sag->input_kind == InputKind::singleton_reads) {
-      ensure_symlink(sag->source1, directory / "raw_R1.fastq");
-      if (sag->input_kind == InputKind::paired_reads) ensure_symlink(sag->source2, directory / "raw_R2.fastq");
-      const auto list = directory / "inputs.list";
-      if (!config.dry) {
-        std::ofstream output(list);
-        output << "raw_R1.fastq\n";
-        if (sag->input_kind == InputKind::paired_reads) output << "raw_R2.fastq\n";
-      }
       std::vector<fs::path> sketch_inputs{sag->source1};
       if (sag->input_kind == InputKind::paired_reads) sketch_inputs.push_back(sag->source2);
       sketch_tasks.push_back({sketch_inputs,
@@ -807,17 +808,11 @@ int main(int argc, char** argv) try {
                                                : "singleton_reads.k.17.l.55296.bit"),
                               pass, sag->id});
     } else {
-      ensure_symlink(sag->assembly, directory / "input.fasta");
-      const auto list = directory / "inputs.list";
-      if (!config.dry) {
-        std::ofstream output(list);
-        output << "input.fasta\n";
-      }
       sketch_tasks.push_back({{sag->assembly},
                               directory / "input.fasta.k.17.l.55296.bit", pass, sag->id});
     }
   }
-  run_embedded_sketches(sketch_tasks, static_cast<std::size_t>(sketch_workers), config.dry);
+  run_embedded_sketches(sketch_tasks, sketch_workers, config.dry);
   if (!config.dry) {
     std::ofstream(config.out / "02_dna2bit" / "SKETCH.PASS")
         << "PASS\nimplementation=embedded_dna2bit_source\nmode=per-SAG_auto_routed\n"
@@ -883,6 +878,7 @@ int main(int argc, char** argv) try {
   for (auto* sag : eligible) {
     by_bit[sag->bit_search_token] = sag;
     by_bit[fs::path(sag->bit_search_token).filename().generic_string()] = sag;
+    by_bit[(config.out / "02_dna2bit" / sag->bit_search_token).lexically_normal().generic_string()] = sag;
     by_bit[fs::weakly_canonical(sag->bit).string()] = sag;
   }
   std::ifstream result_file(result);
@@ -905,7 +901,7 @@ int main(int argc, char** argv) try {
     taxonomy.erase(std::remove(taxonomy.begin(), taxonomy.end(), '\r'), taxonomy.end());
     taxonomy.erase(std::remove(taxonomy.begin(), taxonomy.end(), '\n'), taxonomy.end());
     const auto key = species_key(taxonomy);
-    groups[key].push_back(found->second);
+    if (!config.stop_after_annotation) groups[key].push_back(found->second);
     labeled.insert(found->second->id);
     labels << found->second->id << '\t' << columns[1] << '\t' << taxonomy << '\t' << key << '\n';
   }

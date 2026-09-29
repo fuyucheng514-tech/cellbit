@@ -1,4 +1,4 @@
-import importlib.machinery, importlib.util, os, tempfile, unittest
+import importlib.machinery, importlib.util, io, os, tempfile, unittest
 from unittest.mock import patch
 from argparse import Namespace
 from pathlib import Path
@@ -147,6 +147,33 @@ class Inputs(unittest.TestCase):
             self.assertEqual((root/"result/annotations.tsv").read_text(),
                              "sag_id\tspecies\nA\tSpecies_alpha\nB\tUNCLASSIFIED\n")
             self.assertEqual([p.name for p in (root/"result").iterdir()],["annotations.tsv"])
+    def test_annotation_profile_keeps_public_output_minimal(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            r1=root/"A_R1.fastq"; r2=root/"A_R2.fastq"
+            r1.write_text("@a\nACGT\n+\nIIII\n")
+            r2.write_text("@a\nTGCA\n+\nIIII\n")
+            args=cli.make_parser().parse_args([
+                "annotate",str(r1),str(r2),"-d",str(root/"database"),
+                "-o",str(root/"result"),"-t","2"])
+            def fake_pipeline(options, manifest, annotation):
+                self.assertTrue(annotation)
+                work=Path(options.output)
+                (work/"02_dna2bit").mkdir(parents=True)
+                (work/"02_dna2bit/labels.tsv").write_text(
+                    "sag_id\treference\ttaxonomy\tspecies_group\n"
+                    "A\tGCF_1\td__Bacteria;s__Species_alpha\tSpecies_alpha\n")
+                (work/"TIMING.tsv").write_text("phase\tseconds\nsketch\t0.25\n")
+            captured=io.StringIO()
+            with patch.dict(os.environ,{"MICROSAGS_PROFILE":"1"}), \
+                 patch.object(cli,"pipeline",side_effect=fake_pipeline), \
+                 patch("sys.stderr",captured):
+                cli.annotate_assemble(args)
+            self.assertEqual((root/"result/annotations.tsv").read_text(),
+                             "sag_id\tspecies\nA\tSpecies_alpha\n")
+            self.assertEqual([p.name for p in (root/"result").iterdir()],["annotations.tsv"])
+            self.assertIn("MICROSAGS_CORE_PROFILE\tsketch\t0.25",captured.getvalue())
+            self.assertIn("MICROSAGS_WRAPPER_PROFILE",captured.getvalue())
     def test_species_name_accepts_missing_tsv_fields(self):
         self.assertEqual(cli._species_name(None, None), "UNCLASSIFIED")
         self.assertEqual(cli._species_name("", None), "UNCLASSIFIED")

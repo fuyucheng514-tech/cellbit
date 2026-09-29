@@ -1,0 +1,2 @@
+method	input	n_sags	n_classified	n_exact_truth	threads_requested	reference_count	elapsed_s	max_rss_kib	max_rss_gib
+Microsags v0.5.2	paired FASTQ reads	5000	5000	5000	20	113104	298.060	977844	0.932545
