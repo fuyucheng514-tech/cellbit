@@ -112,11 +112,13 @@ target_link_libraries(dna2bit-packed-search PRIVATE Threads::Threads)
 dna2bit_configure_target(dna2bit-packed-search)
 
 # The deployed teacher Dna2bit binary itself requires x86 POPCNT.  Enable the
-# same ISA only for the three packed-search executables so each 64-bit XOR is
-# counted by the hardware instruction rather than a libgcc helper, without
-# raising the ISA requirement of the rest of this portable package.
+# same ISA for every packed-search executable, including the public pipeline
+# that embeds the search implementation. Otherwise `microsags annotate` may
+# use the slow libgcc popcount helper while the standalone search uses POPCNT.
+# The other package executables retain their previous ISA requirement.
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND
    CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
+  target_compile_options(dna2bit-sag-pipeline PRIVATE -mpopcnt)
   target_compile_options(dna2bit-packed PRIVATE -mpopcnt)
   target_compile_options(dna2bit-pack-builder PRIVATE -mpopcnt)
   target_compile_options(dna2bit-packed-search PRIVATE -mpopcnt)
