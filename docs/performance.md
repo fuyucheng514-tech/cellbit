@@ -13,9 +13,10 @@ excluded from this display because of higher shared-server load.
 
 The reads routes start from FASTQ. Every contigs route includes the **same
 archived SPAdes assembly stage**, shown by the hatched part of its time bar.
-The legend gives the shared SPAdes time once; each contigs bar labels only the
-subsequent step in minutes and the total in hours. The Microsags reads and contigs runs used the same 113,104-reference
-index. The simulated chart uses recorded full wall times; a matched, standalone
+The legend gives the shared SPAdes time once. The solid bar end and its dot
+mark the subsequent step; each contigs bar labels its minutes and total hours.
+The Microsags reads and contigs runs used the same 113,104-reference index.
+The simulated chart uses recorded full wall times; a matched, standalone
 database-startup correction was not measured for every route.
 
 The SPAdes and other archived comparator times sum stages or per-SAG times,

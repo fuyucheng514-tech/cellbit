@@ -17,6 +17,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.ticker import MultipleLocator
 
@@ -145,10 +146,16 @@ def main() -> None:
                 zorder=3,
             )
     axes[0].legend(
-        handles=[Patch(facecolor="white", edgecolor="#52616a", hatch="///", label=f"SPAdes stage ({spades_hours:.3f} h)")],
+        handles=[
+            Patch(facecolor="white", edgecolor="#52616a", hatch="///",
+                  label=f"SPAdes ({spades_hours:.3f} h)"),
+            Line2D([], [], color="#33434a", marker="o", markersize=5,
+                   linestyle="none", label="After SPAdes"),
+        ],
         loc="upper right",
         frameon=False,
         fontsize=9.5,
+        ncol=2,
     )
     axes[0].set_xlim(0, max(times_h) + 6.5)
     axes[0].xaxis.set_major_locator(MultipleLocator(5))
@@ -159,7 +166,9 @@ def main() -> None:
         hours_i = times_h[source_idx]
         if source_idx < 4:
             software_minutes = (seconds_i - spades_seconds) / 60
-            label = f"+ {software_minutes:.3f} min\n= {hours_i:.4f} h"
+            axes[0].scatter(hours_i, idx, s=36, color=colors[source_idx],
+                            edgecolors="#33434a", linewidths=0.7, zorder=5)
+            label = f"{software_minutes:.3f} min\n{hours_i:.4f} h total"
         else:
             label = f"{hours_i:.3f} h" if hours_i >= 1 else f"{seconds_i / 60:.3f} min"
         axes[0].text(hours_i + 0.20, idx, label, va="center", ha="left", fontsize=9.2)
