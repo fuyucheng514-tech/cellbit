@@ -1,10 +1,12 @@
 # Microsags source release v0.5.2
 
-This release contains the source-only Microsags software. Annotation passes
+This release contains Microsags source and one small, documented real-data
+Assembly example. Annotation passes
 original FASTQ reads directly to the embedded DNA2bit engine; no read trimming,
 filtering, correction, or pre-assembly stage is invoked. The release does not
-contain lake samples, FASTA/FASTQ files, result directories, build caches, or
-large databases.
+contain the complete 24-sample collection, FASTQ reads, result directories,
+build caches, or large databases. The example SAG contigs and reads-derived
+annotation hand-off are under `examples/pa_hq_3a_3b/`.
 
 ## Install
 

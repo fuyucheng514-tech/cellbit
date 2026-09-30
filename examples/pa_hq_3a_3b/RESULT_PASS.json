@@ -1,0 +1,52 @@
+{
+  "status": "PASS",
+  "created_utc": "2026-09-30T09:33:09.907110+00:00",
+  "source_run": "/home/data/fyc/cellbit_114514/temp/hq_tutorial_20260930/attempt_003_PA_reads_labels_all_members",
+  "sample": "PA",
+  "source_stage3a_species": "CAG-492_sp000434335",
+  "source_stage3b_group": "G0004",
+  "inputs_total": 355,
+  "labelled": 55,
+  "unclassified": 300,
+  "input_compressed_bytes": 43828420,
+  "annotations_sha256": "030078c7d5801e4a036b430abed957a4b612c32369195c4ccb9f44d2b2cd0e44",
+  "quality": [
+    {
+      "arm": "3A",
+      "species_or_group": "CAG-492_sp000434335",
+      "completeness": "95.11",
+      "contamination": "3.54",
+      "quality": "HQ"
+    },
+    {
+      "arm": "3B",
+      "species_or_group": "G0001",
+      "completeness": "64.54",
+      "contamination": "5.41",
+      "quality": "MQ"
+    },
+    {
+      "arm": "3B",
+      "species_or_group": "G0002",
+      "completeness": "92.21",
+      "contamination": "1.47",
+      "quality": "HQ"
+    },
+    {
+      "arm": "3B",
+      "species_or_group": "G0003",
+      "completeness": "90.39",
+      "contamination": "0.63",
+      "quality": "HQ"
+    },
+    {
+      "arm": "3B",
+      "species_or_group": "G0004",
+      "completeness": "39.91",
+      "contamination": "0.61",
+      "quality": "LQ"
+    }
+  ],
+  "label_provenance": "Reads-level annotation from complete PA sample, not computed from the packaged contigs.",
+  "independent_reproduction": "Single PA subset assembled in isolation; output group IDs differ from whole-sample group IDs."
+}
