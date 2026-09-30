@@ -73,6 +73,11 @@ sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
 
+If GitHub transfers time out on a compute server, download the source archive,
+database archive, and checksum file on a connected machine and copy them to the
+server. Then use the archive-based install above and verify the database
+checksum before extraction.
+
 ## Install and configure Stage 3B dependencies once
 
 Assembly mode calls CheckM2 and GTDB-Tk as external programs. They are not
