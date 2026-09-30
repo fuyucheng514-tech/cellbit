@@ -8,11 +8,12 @@ stop after annotation or continue to assembly.
 
 ## The workflow
 
-1. **Annotate** FASTQ reads or per-SAG contigs with DNA2bit. The result is
+1. **Annotate** FASTQ reads or per-SAG contigs. The result is
    `annotations.tsv`: one species call or `UNCLASSIFIED` for each SAG.
 2. **Assemble** per-SAG contigs using that annotation table. Labelled SAGs enter
-   species-based Stage 3A; unclassified SAGs enter clustering-based Stage 3B.
-   The results are group membership tables and assembled FASTA files.
+   species-based assembly; SAGs without a species label enter label-free
+   clustering. The results are group membership tables and assembled FASTA
+   files.
 
 ```bash
 microsags annotate SAGs/ -d database -o annotation_output
