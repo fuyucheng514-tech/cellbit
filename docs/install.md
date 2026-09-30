@@ -1,9 +1,32 @@
 # Install
 
-Microsags v0.5.2 supports Linux x86-64. The recommended installation uses Conda
-or Mamba to create an isolated environment from conda-forge and Bioconda.
+Microsags v0.5.2 supports Linux x86-64. The prebuilt download is the simplest
+route: no compiler, Conda installation, or source checkout is required.
 
-## Install with Conda or Mamba
+## Prebuilt Linux download (recommended)
+
+Download and verify the program archive, then extract it into its final
+location:
+
+```bash
+mkdir -p "$HOME/.local/share/microsags/v0.5.2"
+wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.5.2/Microsags-v0.5.2-linux-x86_64.tar.gz
+wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.5.2/Microsags-v0.5.2-linux-x86_64.tar.gz.sha256
+sha256sum -c Microsags-v0.5.2-linux-x86_64.tar.gz.sha256
+tar -xzf Microsags-v0.5.2-linux-x86_64.tar.gz -C "$HOME/.local/share/microsags/v0.5.2"
+"$HOME/.local/share/microsags/v0.5.2/bin/conda-unpack"
+export PATH="$HOME/.local/share/microsags/v0.5.2/bin:$PATH"
+microsags --help
+```
+
+Run `conda-unpack` once after extraction. Despite its name, this command is
+included inside the archive: you do not need to install Conda. Keep the
+extracted directory in place after running it. Add the `export PATH=...` line
+to your shell startup file if you want `microsags` available in new sessions.
+The GTDB database is a separate download below. Assembly additionally needs
+the external CheckM2 and GTDB-Tk programs and their databases.
+
+## Build from a Git checkout with Conda or Mamba
 
 Clone Microsags, create the environment and install the program:
 
@@ -170,6 +193,5 @@ microsags annotate SAGs/ -d database -o annotation_output
 
 ## Package-manager status
 
-Microsags is not yet published as a Bioconda package. Therefore
-`conda install -c bioconda microsags` is not currently supported. Use the
-checked-in `environment.yml` and `install.sh` instead.
+Microsags is not published as a Bioconda package. Use the prebuilt Linux
+download or build from source.

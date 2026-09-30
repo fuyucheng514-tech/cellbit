@@ -5,6 +5,12 @@ species-guided subassembly of single-amplified genomes (SAGs).
 
 ## Install
 
+For Linux x86-64, download the verified prebuilt archive using the
+[Install guide](docs/install.md). No compiler or Conda installation is needed
+for that route. The reference database remains a separate download.
+
+To build from source instead:
+
 ```bash
 git clone https://github.com/fuyucheng514-tech/cellbit.git Microsags
 cd Microsags
