@@ -38,10 +38,16 @@ jobs:
           python -m unittest discover -s tests -p test_microsags_cli.py
           test -x "$CONDA_PREFIX/bin/microsags"
           grep -Fx 'RUNTIME_BIN=@PREFIX@/bin' "$CONDA_PREFIX/share/microsags/runtime.env"
-          if readelf -d "$CONDA_PREFIX/bin/dna2bit-sag-pipeline" | grep -E 'RPATH|RUNPATH'; then
-            echo 'The packaged executable still has a build-path RPATH' >&2
-            exit 1
+          if ! command -v patchelf >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq patchelf
           fi
+          for executable in dna2bit-sag-pipeline dna2bit-embedded-sketch \
+                            sag-stage3b-tractor gtdb-ani-af dna2bit-packed \
+                            dna2bit-pack-builder dna2bit-packed-search cpp-subass; do
+            patchelf --set-rpath '$ORIGIN/../lib' "$CONDA_PREFIX/bin/$executable"
+            readelf -d "$CONDA_PREFIX/bin/$executable" | grep -F '$ORIGIN/../lib'
+          done
       - name: Pack the runtime
         run: |
           python -m pip install 'conda-pack==0.9.1'
