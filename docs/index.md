@@ -1,35 +1,28 @@
 # Microsags
 
-Microsags provides DNA2bit species annotation and species-guided subassembly
-for single-amplified genomes (SAGs).
+**Species labels first. SAG assembly second.**
 
-## Annotation mode
+Microsags connects two tasks for single-amplified genomes (SAGs): identify the
+species of each SAG, then assemble groups of SAGs from their contigs. You can
+stop after annotation or continue to assembly.
 
-Annotation mode accepts paired FASTQ reads, singleton FASTQ reads, or assembled
-contigs. Original FASTQ reads are passed directly to DNA2bit; they are not
-trimmed, filtered, corrected, or assembled first.
+## The workflow
+
+1. **Annotate** FASTQ reads or per-SAG contigs with DNA2bit. The result is
+   `annotations.tsv`: one species call or `UNCLASSIFIED` for each SAG.
+2. **Assemble** per-SAG contigs using that annotation table. Labelled SAGs enter
+   species-based Stage 3A; unclassified SAGs enter clustering-based Stage 3B.
+   The results are group membership tables and assembled FASTA files.
 
 ```bash
 microsags annotate SAGs/ -d database -o annotation_output
+microsags assemble SAG_contigs/ -a annotation_output/annotations.tsv -o assembly_output
 ```
 
-The principal result maps each SAG identifier to an accepted species label.
+Assembly requires contigs. If you annotated FASTQ reads, assemble each SAG
+individually first, keeping the same SAG identifiers. Annotation itself does not
+assemble reads.
 
-## Assembly mode
-
-Assembly mode is the next step. It accepts one contig FASTA per SAG and an
-`annotations.tsv` hand-off from Annotation mode.
-
-```bash
-microsags assemble SAG_contigs/ \
-  -a annotation_output/annotations.tsv \
-  -o assembly_output
-```
-
-Labelled SAGs enter Stage 3A; unclassified SAGs enter Stage 3B. Both routes use
-the existing `cpp-subass`/Flye subassembly workflow. If annotation was run
-from FASTQ reads, users must first assemble every SAG independently and preserve
-the same SAG identifiers.
-
-Continue with [Install](install.md), [Usage examples](usage.md), or the
-[downloadable real-data 3A/3B HQ example](pa-hq-tutorial.md).
+**Start here:** [Install Microsags](install.md) ·
+[Run your own SAGs](usage.md) ·
+[Try the tested PA example](pa-hq-tutorial.md)
