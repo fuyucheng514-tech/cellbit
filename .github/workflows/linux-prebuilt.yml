@@ -1,0 +1,75 @@
+name: Linux prebuilt package
+
+on:
+  push:
+    branches: [main]
+    tags: ["v0.5.2"]
+    paths:
+      - "src/**"
+      - "tools/**"
+      - "tests/smoke_prebuilt.py"
+      - "tests/test_microsags_cli.py"
+      - "CMakeLists.txt"
+      - "install.sh"
+      - "environment.yml"
+      - ".github/workflows/linux-prebuilt.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v4
+        with:
+          miniforge-version: latest
+          environment-file: environment.yml
+          activate-environment: microsags
+          auto-update-conda: false
+      - name: Build relocatable programs
+        run: |
+          PREFIX="$CONDA_PREFIX" JOBS=2 MICROSAGS_PORTABLE_BUILD=1 bash install.sh
+          python -m unittest discover -s tests -p test_microsags_cli.py
+          test -x "$CONDA_PREFIX/bin/microsags"
+          grep -Fx 'RUNTIME_BIN=@PREFIX@/bin' "$CONDA_PREFIX/share/microsags/runtime.env"
+          if readelf -d "$CONDA_PREFIX/bin/dna2bit-sag-pipeline" | grep -E 'RPATH|RUNPATH'; then
+            echo 'The packaged executable still has a build-path RPATH' >&2
+            exit 1
+          fi
+      - name: Pack the runtime
+        run: |
+          python -m pip install 'conda-pack==0.9.1'
+          conda-pack -p "$CONDA_PREFIX" -o Microsags-v0.5.2-linux-x86_64.tar.gz
+          sha256sum Microsags-v0.5.2-linux-x86_64.tar.gz > Microsags-v0.5.2-linux-x86_64.tar.gz.sha256
+          test "$(stat -c %s Microsags-v0.5.2-linux-x86_64.tar.gz)" -lt 2147483648
+      - name: Test a fresh extraction outside Conda
+        run: |
+          mkdir -p "$RUNNER_TEMP/microsags-prebuilt-check"
+          tar -xzf Microsags-v0.5.2-linux-x86_64.tar.gz -C "$RUNNER_TEMP/microsags-prebuilt-check"
+          "$RUNNER_TEMP/microsags-prebuilt-check/bin/conda-unpack"
+          /usr/bin/python3 tests/smoke_prebuilt.py "$RUNNER_TEMP/microsags-prebuilt-check/bin/microsags"
+      - name: Save verified package
+        if: startsWith(github.ref, 'refs/heads/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: microsags-linux-x86_64-verified
+          path: |
+            Microsags-v0.5.2-linux-x86_64.tar.gz
+            Microsags-v0.5.2-linux-x86_64.tar.gz.sha256
+          retention-days: 7
+      - name: Publish verified release
+        if: startsWith(github.ref, 'refs/tags/v0.5.2')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            Microsags-v0.5.2-linux-x86_64.tar.gz \
+            Microsags-v0.5.2-linux-x86_64.tar.gz.sha256 \
+            --title "Microsags v0.5.2" \
+            --notes "Verified Linux x86-64 prebuilt program. The GTDB reference database remains a separate download. CheckM2 and GTDB-Tk plus their databases are separate Assembly dependencies."

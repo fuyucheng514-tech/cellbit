@@ -8,9 +8,16 @@ VERSION = "0.5.2"
 FASTA = (".fasta", ".fna", ".fa", ".fas")
 FASTQ = (".fastq", ".fq")
 
+def _runtime_path(value, prefix):
+    """Resolve the relocatable prefix marker used by prebuilt archives."""
+    if value == "@PREFIX@": return str(prefix)
+    if value.startswith("@PREFIX@/"): return str(prefix / value[len("@PREFIX@/"):])
+    return value
+
 def _load_installed_runtime():
     """Make install-time dependencies available to child programs."""
-    config = Path(__file__).resolve().parent.parent / "share" / "microsags" / "runtime.env"
+    prefix = Path(__file__).resolve().parent.parent
+    config = prefix / "share" / "microsags" / "runtime.env"
     if not config.is_file():
         return
     values = {}
@@ -19,7 +26,7 @@ def _load_installed_runtime():
             continue
         key, value = raw.split("=", 1)
         if key in {"RUNTIME_BIN", "RUNTIME_LIB"} and value:
-            values[key] = value
+            values[key] = _runtime_path(value, prefix)
     if values.get("RUNTIME_BIN"):
         os.environ["PATH"] = values["RUNTIME_BIN"] + os.pathsep + os.environ.get("PATH", "")
     if values.get("RUNTIME_LIB"):

@@ -9,6 +9,11 @@ spec = importlib.util.spec_from_loader(loader.name, loader)
 cli = importlib.util.module_from_spec(spec); loader.exec_module(cli)
 
 class Inputs(unittest.TestCase):
+    def test_portable_runtime_prefix_marker(self):
+        self.assertEqual(cli._runtime_path("@PREFIX@/bin", Path("/opt/microsags")),
+                         str(Path("/opt/microsags/bin")))
+        self.assertEqual(cli._runtime_path("/existing/env/lib", Path("/opt/microsags")),
+                         "/existing/env/lib")
     def test_v050_direct_read_release_contract(self):
         self.assertEqual(cli.VERSION, "0.5.2")
         source=(Path(__file__).parents[1]/"src"/"main.cpp").read_text()
