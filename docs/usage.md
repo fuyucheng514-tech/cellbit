@@ -10,6 +10,9 @@ Annotation mode assigns a DNA2bit species label to each SAG. It accepts paired
 FASTQ reads, singleton FASTQ reads, or assembled contigs. It does not run
 Stage 3A, Stage 3B or subassembly.
 
+The three input examples below are alternatives. Use a new output directory
+for each run; Microsags does not overwrite a completed result.
+
 For FASTQ input, Microsags sends all original reads from each SAG directly to
 DNA2bit. It does not trim, filter, correct, or assemble reads first.
 

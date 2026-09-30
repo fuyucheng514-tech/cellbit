@@ -218,9 +218,9 @@ def evaluate_parameters(nodes, positive, negative, workers=1, parameters=PARAMET
         completed = list(executor.map(
             _run_signed_parameter, indexed_parameters, chunksize=1))
 
-    ordered = [None] * len(PARAMETERS)
+    ordered = [None] * len(parameters)
     for index, parts in completed:
-        if not 0 <= index < len(PARAMETERS) or ordered[index] is not None:
+        if not 0 <= index < len(parameters) or ordered[index] is not None:
             raise ContractError("invalid or duplicate signed-Leiden worker result")
         ordered[index] = parts
     if any(parts is None for parts in ordered):
@@ -313,7 +313,9 @@ def run(args):
         nodes, positive, negative, workers=workers, parameters=parameters)
     for (resolution, lam), parts in zip(parameters, partitions):
         detail, score, violated = summarise(parts, marker_pairs, negative)
-        tag = f"gs_r{resolution:.1f}_lam{int(lam)}"
+        resolution_tag = (f"{resolution:.1f}" if getattr(args, "leiden_resolution", None) is None
+                          else f"{resolution:.12g}")
+        tag = f"gs_r{resolution_tag}_lam{int(lam)}"
         record = {
             "tag": tag,
             "res_pos": resolution,
@@ -446,7 +448,7 @@ def cli():
     parser.add_argument(
         "--workers", type=int, default=1,
         help=("independent signed-Leiden parameter processes (default: 1; "
-              "values above 6 are capped at the six frozen parameter sets)"))
+              "values above the selected sweep size are capped)"))
     parser.add_argument(
         "--leiden-resolution", type=float,
         help="override positive-layer Leiden resolution; all other rules remain unchanged")

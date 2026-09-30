@@ -60,8 +60,8 @@ cmake --install build --prefix "$HOME/.local"
 
 ## Download the database
 
-The source archive and the scientific database are separate Release assets.
-Download the frozen packed database once:
+The source code and the scientific database are separate downloads. Download
+the frozen packed database once:
 
 ```bash
 mkdir -p "$HOME/microsags-data"
