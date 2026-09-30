@@ -15,7 +15,7 @@ nav:
   - Install: install.md
   - Usage examples: usage.md
   - Performance: performance.md
-  - Real-data 3A/3B example: pa-hq-tutorial.md
+  - Real-data example: pa-hq-tutorial.md
   - Results and output files: outputs.md
   - Adjust Leiden clustering: stage3b.md
 
