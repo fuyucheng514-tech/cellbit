@@ -1,0 +1,6 @@
+arm	species_or_group	completeness	contamination	quality
+3A	CAG-492_sp000434335	95.24	3.78	HQ
+3B	G0001	64.13	5.07	MQ
+3B	G0002	92.05	1.43	HQ
+3B	G0003	89.84	0.63	MQ
+3B	G0004	39.90	0.61	LQ

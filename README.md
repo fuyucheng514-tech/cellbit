@@ -52,6 +52,11 @@ microsags assemble SAG_contigs/ \
 
 If `--leiden-resolution` is omitted, the frozen default sweep is used.
 
+For a real downloadable 3A/3B HQ example, see
+[`examples/pa_hq_3a_3b/`](examples/pa_hq_3a_3b/README.md). Stage 3B needs
+separately installed CheckM2 and GTDB-Tk programs and databases; configure
+their paths once using the [Install guide](docs/install.md).
+
 Assembly publishes only `stage3a.tsv`, final Stage 3A FASTA files,
 `stage3b_clusters.tsv`, and final Stage 3B FASTA files. Temporary scientific
 work is kept outside the result directory on failure and removed after a

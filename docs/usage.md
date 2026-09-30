@@ -112,6 +112,9 @@ Stage 3A. Unclassified SAGs are processed by the Stage 3B evidence and
 graph-clustering workflow. Both routes retain the existing
 `cpp-subass`/Flye subassembly logic.
 
+For a tested real-data input that yields HQ assemblies on both routes, see the
+[3A/3B example](pa-hq-tutorial.md).
+
 The Stage 3B Leiden resolution is optional and adjustable:
 
 ```bash

@@ -73,10 +73,19 @@ sha256sum -c Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz.sha256
 tar -xzf Microsags-GTDB232-DNA2bit-k17-packed-v1.tar.gz
 ```
 
-## Configure Stage 3B databases once
+## Install and configure Stage 3B dependencies once
 
-CheckM2 and GTDB-Tk are called automatically by Assembly mode. Record their
-database locations once so normal Assembly commands stay short:
+Assembly mode calls CheckM2 and GTDB-Tk as external programs. They are not
+installed by Microsags' `environment.yml`; install them in separate environments
+so their Python dependencies do not conflict:
+
+```bash
+mamba create -n microsags-checkm2 -c conda-forge -c bioconda checkm2=1.0.1
+mamba create -n microsags-gtdbtk -c conda-forge -c bioconda gtdbtk=2.7.2
+```
+
+Their databases are separate downloads. Once both programs and databases are
+available, record the absolute paths so normal Assembly commands stay short:
 
 ```bash
 mkdir -p "$HOME/.config/microsags"
@@ -86,13 +95,17 @@ cp config/paths.env.example "$HOME/.config/microsags/paths.env"
 Edit the copied file:
 
 ```text
+CHECKM2_BIN=/absolute/path/to/microsags-checkm2/bin/checkm2
 CHECKM2DB=/data/CheckM2/uniref100.KO.1.dmnd
+GTDBTK_BIN=/absolute/path/to/microsags-gtdbtk/bin/gtdbtk
 GTDBTK_DATA_PATH=/data/GTDBTK/release
 ```
 
-After this one-time configuration, users do not pass either database path on
-every run. `--checkm2-database` and `--gtdbtk-data` remain available only as
-explicit overrides.
+After this one-time configuration, users do not pass these four paths on every
+run. The `--checkm2`, `--gtdbtk`, `--checkm2-database`, and `--gtdbtk-data`
+options remain available as explicit overrides. Microsags runs each external
+program using its own environment's executables rather than the Microsags
+runtime libraries.
 
 ## Build a database for a new GTDB release
 

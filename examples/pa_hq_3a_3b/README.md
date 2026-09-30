@@ -17,14 +17,19 @@ microsags assemble examples/pa_hq_3a_3b/SAG_contigs/ \
 ```
 
 The command writes `stage3a.tsv`, `stage3b_clusters.tsv` and the corresponding
-FASTA assemblies. The tested subset yielded one Stage 3A HQ bin and two Stage
-3B HQ bins. CheckM2 measurements from the independent subset run are in
-`EXPECTED_QUALITY.tsv`; HQ means completeness at least 90% and contamination
-below 5%. Stage 3B group numbers are assigned anew and are not the original
-whole-sample group identifiers.
+FASTA assemblies. Independent testing with a newly installed user environment
+yielded one Stage 3A HQ bin and one Stage 3B HQ bin. Its CheckM2 measurements
+are in `NEW_USER_QUALITY.tsv`. The source-server subset run additionally had
+a second, borderline Stage 3B HQ bin; those measurements are in
+`SOURCE_RUN_QUALITY.tsv`. HQ means completeness at least 90% and contamination
+below 5%. Both runs had byte-identical Stage 3B membership tables but different
+assembly FASTAs. The borderline bin was 90.39% complete in the source run and
+89.84% in the new-user run, so **two Stage 3B HQ bins are not guaranteed**.
+Stage 3B group numbers are assigned anew and are not the original whole-sample
+group identifiers.
 
 `SOURCE_INPUTS.tsv` records the SHA-256 and byte size of every packaged SAG
-FASTA. `RESULT_PASS.json` records the source run and the independent subset
-verification. The full output and logs are retained under
+FASTA. `RESULT_PASS.json` records the source-server subset run. The full
+new-user output and logs, as well as the source output, are retained under
 `/home/data/fyc/cellbit_114514/result/hq_3a_3b_tutorial_20260930/attempt_001`
 on the source server.

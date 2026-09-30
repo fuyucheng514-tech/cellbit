@@ -17,8 +17,8 @@ The principal result maps each SAG identifier to an accepted species label.
 
 ## Assembly mode
 
-Assembly mode is the next step. It accepts one contig FASTA per SAG and a
-completed Annotation-mode output directory.
+Assembly mode is the next step. It accepts one contig FASTA per SAG and an
+`annotations.tsv` hand-off from Annotation mode.
 
 ```bash
 microsags assemble SAG_contigs/ \
@@ -31,4 +31,5 @@ the existing `cpp-subass`/Flye subassembly workflow. If annotation was run
 from FASTQ reads, users must first assemble every SAG independently and preserve
 the same SAG identifiers.
 
-Continue with [Install](install.md) or [Usage examples](usage.md).
+Continue with [Install](install.md), [Usage examples](usage.md), or the
+[downloadable real-data 3A/3B HQ example](pa-hq-tutorial.md).

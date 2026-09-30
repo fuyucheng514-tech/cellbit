@@ -231,9 +231,18 @@ def configured_paths():
             if not line or line.startswith("#") or "=" not in line: continue
             key,value=line.split("=",1)
             value=value.strip().strip('"').strip("'")
-            if key.strip() in {"CHECKM2DB","GTDBTK_DATA_PATH"} and value:
+            if key.strip() in {"CHECKM2DB","GTDBTK_DATA_PATH","CHECKM2_BIN","GTDBTK_BIN"} and value:
                 values[key.strip()]=value
     return values
+
+def external_tool_env(program, extra=None):
+    """Run a tool from its own environment, not the Microsags Conda runtime."""
+    environment=os.environ.copy()
+    environment.pop("LD_LIBRARY_PATH",None)
+    executable=shutil.which(str(program)) or str(program)
+    environment["PATH"]=str(Path(executable).resolve().parent)+os.pathsep+environment.get("PATH","")
+    if extra: environment.update(extra)
+    return environment
 
 def flye_root():
     """Return the Flye installation prefix expected by the embedded runner."""
@@ -259,20 +268,22 @@ def stage3b(args):
     root = Path(args.output).expanduser().resolve(); pending = file(root/"03B_unclassified_pending.tsv")
     if sum(1 for _ in pending.open(encoding="utf-8")) <= 1:
         print("Stage 3B: no negative SAGs.", file=sys.stderr); return
-    checkm2, gtdbtk = args.checkm2 or shutil.which("checkm2"), args.gtdbtk or shutil.which("gtdbtk")
     configured=configured_paths()
+    checkm2 = args.checkm2 or os.getenv("CHECKM2_BIN") or configured.get("CHECKM2_BIN") or shutil.which("checkm2")
+    gtdbtk = args.gtdbtk or os.getenv("GTDBTK_BIN") or configured.get("GTDBTK_BIN") or shutil.which("gtdbtk")
     cdb = args.checkm2_database or os.getenv("CHECKM2DB") or configured.get("CHECKM2DB")
     gdb = args.gtdbtk_data or os.getenv("GTDBTK_DATA_PATH") or configured.get("GTDBTK_DATA_PATH")
     if not checkm2 or not gtdbtk: raise Error("assemble requires CheckM2 and GTDB-Tk; install them or pass their paths")
+    if not shutil.which(str(checkm2)): raise Error(f"CheckM2 executable not found: {checkm2}")
+    if not shutil.which(str(gtdbtk)): raise Error(f"GTDB-Tk executable not found: {gtdbtk}")
     if not cdb or not gdb:
         raise Error("Stage 3B databases are not configured; set CHECKM2DB and GTDBTK_DATA_PATH once in ~/.config/microsags/paths.env")
     base = root/"stage3b"; view, stats, upstream, evidence, result = [base/x for x in ("input","stats","upstream","evidence","result")]
     run([sys.executable, helper("prepare_stage3b_upstream_input.py"), "--pending", pending, "--out-dir", view])
     run([sys.executable, helper("prepare_stage3b_pending_stats.py"), "--pending", pending, "--stats", root/"STAGE3B_FASTA_STATS.tsv", "--out-dir", stats])
     upstream.mkdir(parents=True)
-    run([checkm2,"predict","--input",view/"input_fna","--output-directory",upstream/"checkm2","--database_path",file(cdb),"--extension","fna","--threads",args.threads,"--force"])
-    env=os.environ.copy(); env["GTDBTK_DATA_PATH"]=str(Path(gdb).resolve())
-    run([gtdbtk,"identify","--genome_dir",view/"input_fna","--out_dir",upstream/"gtdbtk","-x","fna","--cpus",args.threads,"--force","--write_single_copy_genes"], env)
+    run([checkm2,"predict","--input",view/"input_fna","--output-directory",upstream/"checkm2","--database_path",file(cdb),"--extension","fna","--threads",args.threads,"--force"], external_tool_env(checkm2))
+    run([gtdbtk,"identify","--genome_dir",view/"input_fna","--out_dir",upstream/"gtdbtk","-x","fna","--cpus",args.threads,"--force","--write_single_copy_genes"], external_tool_env(gtdbtk,{"GTDBTK_DATA_PATH":str(Path(gdb).resolve())}))
     run([sys.executable,helper("finalize_stage3b_upstream.py"),"--pending",pending,"--stats",stats/"STAGE3B_FASTA_STATS.tsv","--input-view",view,"--checkm2-report",upstream/"checkm2/quality_report.tsv","--identify-root",upstream/"gtdbtk","--out-dir",evidence])
     command=[exe("sag-stage3b-tractor"),"--manifest",pending,"--quality-manifest",evidence/"stage3b_quality.tsv","--marker-map",evidence/"bac120_marker_nt_map.tsv","--ani-engine",exe("gtdb-ani-af"),"--allow-experimental-ani-engine","--makeblastdb",exe("makeblastdb"),"--blastn",exe("blastn"),"--python",sys.executable,"--leiden-backend",helper("stage3b_signed_leiden.py"),"--subass",exe("cpp-subass"),"--flye-root",flye_root(),"--threads",args.threads,"--out",result]
     if args.leiden_resolution is not None: command += ["--leiden-resolution",args.leiden_resolution]

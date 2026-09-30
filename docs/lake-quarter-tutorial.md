@@ -1,5 +1,9 @@
 # Lake quarter tutorial
 
+> Historical 3A-only checkpoint. For the current downloadable example that
+> independently produces HQ output in both 3A and 3B, use the
+> [real-data 3A/3B example](pa-hq-tutorial.md).
+
 This integration example applies Microsags to a
 deterministic quarter of the 13,742-SAG lake contig collection. It tests
 realistic scale and output contracts. The underlying biological data are not

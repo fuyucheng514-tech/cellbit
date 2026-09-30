@@ -16,6 +16,10 @@ microsags --help
 
 `environment.yml` installs the compiler and runtime dependencies. `install.sh`
 builds the C++17 sources and installs Microsags into the active environment.
+Stage 3B additionally requires CheckM2 1.0.1 and GTDB-Tk 2.7.2, installed
+separately because their Python environments differ. See the
+[Install guide](docs/install.md#install-and-configure-stage-3b-dependencies-once)
+for the commands and one-time executable/database path configuration.
 Subsequent commands are invoked directly, for example:
 
 ```bash
@@ -67,8 +71,8 @@ Large scientific databases are deliberately not stored in GitHub or inside the
 Conda environment. Before a scientific run, provide:
 
 - the matching Microsags DNA2bit database with `-d database` in Annotation;
-- CheckM2 and GTDB-Tk databases only when the optional Stage 3B preparation or
-  final quality evaluation is used.
+- CheckM2 and GTDB-Tk programs plus their databases when Assembly has
+  unclassified SAGs and enters Stage 3B.
 
 Database versions and checksums are part of a run's reproducibility record, not
 of the source installation.

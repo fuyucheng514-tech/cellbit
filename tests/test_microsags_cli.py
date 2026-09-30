@@ -20,11 +20,23 @@ class Inputs(unittest.TestCase):
     def test_stage3b_database_paths_load_from_user_config(self):
         with tempfile.TemporaryDirectory() as d:
             config=Path(d)/"microsags/paths.env"; config.parent.mkdir()
-            config.write_text("CHECKM2DB=/db/checkm2.dmnd\nGTDBTK_DATA_PATH=/db/gtdbtk\n")
+            config.write_text("CHECKM2DB=/db/checkm2.dmnd\nGTDBTK_DATA_PATH=/db/gtdbtk\n"
+                              "CHECKM2_BIN=/tools/checkm2\nGTDBTK_BIN=/tools/gtdbtk\n")
             with patch.dict(os.environ,{"XDG_CONFIG_HOME":d},clear=False):
                 values=cli.configured_paths()
             self.assertEqual(values["CHECKM2DB"],"/db/checkm2.dmnd")
             self.assertEqual(values["GTDBTK_DATA_PATH"],"/db/gtdbtk")
+            self.assertEqual(values["CHECKM2_BIN"],"/tools/checkm2")
+            self.assertEqual(values["GTDBTK_BIN"],"/tools/gtdbtk")
+    def test_external_tool_environment_isolated_from_microsags_runtime(self):
+        with tempfile.TemporaryDirectory() as d:
+            tool=Path(d)/"checkm2"
+            tool.write_text("#!/bin/sh\n")
+            with patch.dict(os.environ,{"LD_LIBRARY_PATH":"/microsags/lib","PATH":"/microsags/bin"}):
+                env=cli.external_tool_env(tool,{"GTDBTK_DATA_PATH":"/db/gtdbtk"})
+            self.assertNotIn("LD_LIBRARY_PATH",env)
+            self.assertEqual(env["PATH"].split(os.pathsep)[0],str(tool.parent.resolve()))
+            self.assertEqual(env["GTDBTK_DATA_PATH"],"/db/gtdbtk")
     def test_sketch_mode_has_standard_database_builder_options(self):
         args=cli.make_parser().parse_args(["sketch","references","-x","taxonomy.csv","-o","database","-t","8"])
         self.assertEqual(args.command,"sketch")
