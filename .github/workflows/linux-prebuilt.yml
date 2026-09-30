@@ -58,7 +58,8 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/microsags-prebuilt-check"
           tar -xzf Microsags-v0.5.2-linux-x86_64.tar.gz -C "$RUNNER_TEMP/microsags-prebuilt-check"
-          "$RUNNER_TEMP/microsags-prebuilt-check/bin/conda-unpack"
+          env -i HOME="$HOME" PATH="$RUNNER_TEMP/microsags-prebuilt-check/bin:/usr/bin:/bin" \
+            "$RUNNER_TEMP/microsags-prebuilt-check/bin/conda-unpack"
           /usr/bin/python3 tests/smoke_prebuilt.py "$RUNNER_TEMP/microsags-prebuilt-check/bin/microsags"
       - name: Save verified package
         if: startsWith(github.ref, 'refs/heads/')

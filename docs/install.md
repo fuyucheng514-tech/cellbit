@@ -14,8 +14,8 @@ wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.5.2-linux
 wget https://github.com/fuyucheng514-tech/cellbit/releases/download/v0.5.2-linux1/Microsags-v0.5.2-linux-x86_64.tar.gz.sha256
 sha256sum -c Microsags-v0.5.2-linux-x86_64.tar.gz.sha256
 tar -xzf Microsags-v0.5.2-linux-x86_64.tar.gz -C "$HOME/.local/share/microsags/v0.5.2"
-"$HOME/.local/share/microsags/v0.5.2/bin/conda-unpack"
 export PATH="$HOME/.local/share/microsags/v0.5.2/bin:$PATH"
+conda-unpack
 microsags --help
 ```
 
