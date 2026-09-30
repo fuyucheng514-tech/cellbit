@@ -16,8 +16,8 @@ The input is in [`examples/pa_hq_3a_3b/`](https://github.com/fuyucheng514-tech/c
 
 ```text
 examples/pa_hq_3a_3b/
-├── SAG_contigs/          # 355 compressed FASTA files, one per SAG
-├── annotations.tsv      # 55 species labels, 300 UNCLASSIFIED
+├── SAG_contigs/           # 355 compressed FASTA files, one per SAG
+├── annotations.tsv       # 55 species labels, 300 UNCLASSIFIED
 ├── SOURCE_INPUTS.tsv      # per-file checksums
 ├── SOURCE_RUN_QUALITY.tsv # source-server subset result
 └── NEW_USER_QUALITY.tsv   # independently reproduced result

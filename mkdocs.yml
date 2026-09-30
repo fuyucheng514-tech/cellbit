@@ -24,6 +24,12 @@ exclude_docs: |
   styles.css
   app.js
   favicon.svg
+  DNA2BIT_PACKED_SEARCH.md
+  STAGE3B_STREAMING_OPTIMIZATION_20260904.md
+  STAGE3B_FROZEN_SPEC_ZH.md
+  PACKAGING_UNDER_1GIB.md
+  lake-quarter-tutorial.md
+  stage3b_reproduction_v1_termination.json
 
 markdown_extensions:
   - admonition
